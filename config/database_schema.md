@@ -230,6 +230,84 @@
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
 | updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
 
+### 1.15 CVE漏洞规则表（cve_rules）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 规则ID |
+| cve_id | VARCHAR(20) | UNIQUE NOT NULL | CVE编号 |
+| name | VARCHAR(255) | NOT NULL | 漏洞名称 |
+| description | TEXT | | 漏洞描述 |
+| severity | VARCHAR(20) | NOT NULL | 严重程度 |
+| cvss_score | DECIMAL(3,1) | | CVSS评分 |
+| affected_software | JSONB | | 受影响软件 |
+| detection_pattern | TEXT | | 检测模式（正则表达式） |
+| mitigation | TEXT | | 缓解措施 |
+| published_date | DATE | | 发布日期 |
+| last_updated | DATE | | 最后更新日期 |
+| enabled | BOOLEAN | DEFAULT TRUE | 是否启用 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
+
+### 1.16 MITRE ATT&CK映射表（mitre_attack_mappings）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 映射ID |
+| technique_id | VARCHAR(20) | NOT NULL | 技术ID（如 T1059.007） |
+| technique_name | VARCHAR(255) | NOT NULL | 技术名称 |
+| tactic | VARCHAR(100) | NOT NULL | 战术（如 Initial Access） |
+| description | TEXT | | 技术描述 |
+| attack_type | VARCHAR(100) | | 攻击类型关联 |
+| severity | VARCHAR(20) | | 严重程度 |
+| mitigation | TEXT | | 缓解措施 |
+| detection | TEXT | | 检测方法 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
+
+### 1.17 白名单表（whitelist）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 白名单ID |
+| type | VARCHAR(20) | NOT NULL | 类型（ip/domain/url/user/process） |
+| value | VARCHAR(255) | NOT NULL | 白名单值 |
+| description | TEXT | | 描述 |
+| source | VARCHAR(100) | | 来源（如 internal/thirdparty） |
+| expires_at | TIMESTAMP | | 过期时间 |
+| enabled | BOOLEAN | DEFAULT TRUE | 是否启用 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
+
+### 1.18 告警聚合表（alert_aggregations）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 聚合ID |
+| source_ip | INET | NOT NULL | 源IP地址 |
+| attack_type | VARCHAR(100) | NOT NULL | 攻击类型 |
+| severity | VARCHAR(20) | NOT NULL | 严重程度 |
+| count | INTEGER | DEFAULT 1 | 攻击次数 |
+| first_seen | TIMESTAMP | NOT NULL | 首次出现时间 |
+| last_seen | TIMESTAMP | NOT NULL | 最后出现时间 |
+| status | VARCHAR(20) | DEFAULT 'active' | 状态（active/processed/closed） |
+| details | JSONB | | 详细信息 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
+
+### 1.19 时间窗口分析表（time_window_analysis）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 分析ID |
+| type | VARCHAR(50) | NOT NULL | 分析类型（login_failure/brute_force/port_scan） |
+| target | VARCHAR(255) | NOT NULL | 目标（如 IP/用户名） |
+| source_ip | INET | | 源IP地址 |
+| count | INTEGER | DEFAULT 1 | 事件次数 |
+| window_start | TIMESTAMP | NOT NULL | 窗口开始时间 |
+| window_end | TIMESTAMP | NOT NULL | 窗口结束时间 |
+| threshold | INTEGER | NOT NULL | 阈值 |
+| severity | VARCHAR(20) | NOT NULL | 严重程度 |
+| status | VARCHAR(20) | DEFAULT 'active' | 状态（active/processed/closed） |
+| details | JSONB | | 详细信息 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
+
 ## 2. InfluxDB 数据库设计
 
 ### 2.1 攻击事件测量（attack_events）

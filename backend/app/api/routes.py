@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.endpoints import auth, alerts, attack_events, dashboard, configurations, notification_channels, integrations, threat_intel, anomalies, attack_tracking, orchestration, ai_analysis, data_sources
+from app.api.endpoints import auth, alerts, attack_events, dashboard, configurations, notification_channels, integrations, threat_intel, anomalies, attack_tracking, orchestration, ai_analysis, data_sources, detection
 
 router = APIRouter()
 
@@ -18,3 +18,4 @@ router.include_router(attack_tracking.router, prefix="/attack-tracking", tags=["
 router.include_router(orchestration.router, prefix="/orchestration", tags=["orchestration"])
 router.include_router(ai_analysis.router, prefix="/ai-analysis", tags=["ai analysis"])
 router.include_router(data_sources.router, prefix="/data-sources", tags=["data sources"])
+router.include_router(detection.router, prefix="/detection", tags=["detection"])
