@@ -3,6 +3,23 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import axios from 'axios';
 
+interface AttackEvent {
+  id: number;
+  timestamp: string;
+  attack_type: string;
+  source_ip: string;
+  target_ip: string;
+  target_port: number;
+  user_agent: string;
+  status: string;
+  request_method: string;
+  request_path: string;
+  request_params: Record<string, string>;
+  response_code: number;
+  severity: string;
+  details: Record<string, string>;
+}
+
 const ThreeDScreen: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -12,7 +29,7 @@ const ThreeDScreen: React.FC = () => {
   const attackPointsRef = useRef<THREE.Points | null>(null);
   const networkLinesRef = useRef<THREE.LineSegments | null>(null);
   const animationIdRef = useRef<number>();
-  const attackDataRef = useRef<any[]>([]);
+  const attackDataRef = useRef<AttackEvent[]>([]);
   const timeRef = useRef<number>(0);
 
   // 初始化Three.js场景

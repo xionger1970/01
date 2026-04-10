@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { reportingService } from '../services/api';
 
+interface ReportParameters {
+  [key: string]: any;
+}
+
+interface ReportContent {
+  title: string;
+  generated_at: string;
+  time_range?: {
+    start: string;
+    end: string;
+  };
+  sections: {
+    [key: string]: any;
+  };
+}
+
 interface Report {
   id: number;
   type: string;
@@ -8,8 +24,8 @@ interface Report {
   status: string;
   created_at: string;
   updated_at: string;
-  parameters?: any;
-  content?: any;
+  parameters?: ReportParameters;
+  content?: ReportContent;
 }
 
 interface ReportTemplate {
@@ -28,20 +44,18 @@ const Reporting: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [reportType, setReportType] = useState<string>('daily');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadReportTemplates();
     loadReports();
 
     // 每30秒刷新一次报告列表
-    const interval = setInterval(loadReports, 30000);
-    setRefreshInterval(interval);
+    const interval = setInterval(() => {
+      loadReports();
+    }, 30000);
 
     return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
+      clearInterval(interval);
     };
   }, []);
 

@@ -158,7 +158,7 @@ export const configurationsService = {
 
 // Reporting endpoints
 export const reportingService = {
-  generateReport: async (reportType: string, parameters?: any) => {
+  generateReport: async (reportType: string, parameters?: Record<string, any>) => {
     const response = await api.post('/reporting/generate-report', {
       report_type: reportType,
       parameters

@@ -1,12 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Spin, Statistic, Row, Col, Tabs, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'antd';
-import { MonitorOutlined, CpuOutlined, DatabaseOutlined, WifiOutlined, ApiOutlined } from '@ant-design/icons';
+import { CpuOutlined, DatabaseOutlined, ApiOutlined } from '@ant-design/icons';
 
 const { TabPane } = Tabs;
 
+interface PerformanceSummary {
+  timestamp: string;
+  cpu: {
+    average_percent: number;
+    count: number;
+  };
+  memory: {
+    average_percent: number;
+    total_gb: number;
+  };
+  disk: {
+    average_percent: number;
+    total_gb: number;
+  };
+  network: {
+    average_sent_mb: number;
+    average_recv_mb: number;
+  };
+  api: {
+    average_response_time_ms: number;
+    request_count: number;
+    error_rate_percent: number;
+  };
+}
+
+interface Metrics {
+  cpu?: Array<{
+    timestamp: string;
+    percent: number;
+    count: number;
+  }>;
+  memory?: Array<{
+    timestamp: string;
+    used: number;
+    total: number;
+    percent: number;
+  }>;
+  disk?: Array<{
+    timestamp: string;
+    used: number;
+    total: number;
+    percent: number;
+  }>;
+  network?: Array<{
+    timestamp: string;
+    sent: number;
+    recv: number;
+  }>;
+  response_times?: Array<{
+    timestamp: string;
+    endpoint: string;
+    response_time: number;
+  }>;
+  request_counts?: Array<{
+    timestamp: string;
+    endpoint: string;
+    method: string;
+    status_code: number;
+  }>;
+}
+
 const PerformanceMonitor: React.FC = () => {
-  const [summary, setSummary] = useState<any>(null);
-  const [metrics, setMetrics] = useState<any>({});
+  const [summary, setSummary] = useState<PerformanceSummary | null>(null);
+  const [metrics, setMetrics] = useState<Metrics>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>('summary');
 
