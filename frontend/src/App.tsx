@@ -21,6 +21,7 @@ const AIAnalysis = lazy(() => import('./components/AIAnalysis'));
 const DataSourceManagement = lazy(() => import('./components/DataSourceManagement'));
 const Reporting = lazy(() => import('./components/Reporting'));
 const PerformanceMonitor = lazy(() => import('./components/PerformanceMonitor'));
+const ThreeDScreen = lazy(() => import('./components/3DScreen'));
 
 const { Header, Content, Sider } = Layout;
 
@@ -53,6 +54,7 @@ const App: React.FC = () => {
       'ai-analysis': <AIAnalysis />,
       'reporting': <Reporting />,
       'performance': <PerformanceMonitor />,
+      '3d-screen': <ThreeDScreen />,
       'settings': <Settings />,
     };
     return (
@@ -68,6 +70,7 @@ const App: React.FC = () => {
     { key: 'dashboard', icon: <DashboardOutlined />, label: '仪表盘' },
     { key: 'attack-monitor', icon: <AlertOutlined />, label: '攻击监控' },
     { key: 'security-situation', icon: <BarChartOutlined />, label: '安全态势' },
+    { key: '3d-screen', icon: <MonitorOutlined />, label: '3D大屏' },
     { type: 'divider' },
     { key: 'threat-intel', icon: <ApiOutlined />, label: '威胁情报' },
     { key: 'anomaly-detection', icon: <AreaChartOutlined />, label: '异常检测' },
