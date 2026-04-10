@@ -1,0 +1,65 @@
+{
+  "malicious_ips": [
+    "172.16.0.50",
+    "192.168.1.100",
+    "1.1.1.1",
+    "10.0.0.1",
+    "6.6.6.6",
+    "5.5.5.5",
+    "9.9.9.9",
+    "7.7.7.7",
+    "3.3.3.3",
+    "10.10.10.10",
+    "8.8.8.8",
+    "2.2.2.2",
+    "4.4.4.4"
+  ],
+  "malicious_domains": [
+    "backdoor.com",
+    "evil.com",
+    "hacker.net",
+    "phishing.org",
+    "trojan.in",
+    "malware.in",
+    "malicious.com",
+    "attackers.net",
+    "spam.org",
+    "botnet.com"
+  ],
+  "malicious_urls": [
+    "http://malicious.com/exploit",
+    "https://phishing.org/login",
+    "http://botnet.com/c2"
+  ],
+  "apt_groups": {
+    "APT1": {
+      "name": "APT1",
+      "country": "China",
+      "description": "Advanced Persistent Threat group",
+      "tactics": [
+        "Spear Phishing",
+        "Malware",
+        "Data Exfiltration"
+      ],
+      "indicators": [
+        "1.1.1.1",
+        "malicious.com"
+      ]
+    },
+    "Lazarus": {
+      "name": "Lazarus Group",
+      "country": "North Korea",
+      "description": "State-sponsored hacking group",
+      "tactics": [
+        "Ransomware",
+        "Financial Fraud",
+        "Espionage"
+      ],
+      "indicators": [
+        "2.2.2.2",
+        "attackers.net"
+      ]
+    }
+  },
+  "last_updated": "2026-04-10T03:53:54.145962"
+}
