@@ -40,7 +40,7 @@
 |-------|---------|------|------|
 | id | SERIAL | PRIMARY KEY | 渠道ID |
 | name | VARCHAR(100) | NOT NULL | 渠道名称 |
-| type | VARCHAR(50) | NOT NULL | 渠道类型（email/sms/webhook） |
+| type | VARCHAR(50) | NOT NULL | 渠道类型（email/sms/webhook/slack/telegram/dingtalk） |
 | config | JSONB | NOT NULL | 渠道配置（JSON格式） |
 | enabled | BOOLEAN | DEFAULT TRUE | 是否启用 |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
@@ -66,6 +66,169 @@
 | description | TEXT | | 攻击类型描述 |
 | severity | VARCHAR(20) | NOT NULL | 严重程度 |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+### 1.7 网络流量会话表（network_sessions）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 会话ID |
+| source_ip | INET | NOT NULL | 源IP地址 |
+| source_port | INTEGER | | 源端口 |
+| target_ip | INET | NOT NULL | 目标IP地址 |
+| target_port | INTEGER | | 目标端口 |
+| protocol | VARCHAR(10) | NOT NULL | 协议（TCP/UDP/ICMP） |
+| bytes_sent | BIGINT | DEFAULT 0 | 发送字节数 |
+| bytes_received | BIGINT | DEFAULT 0 | 接收字节数 |
+| packet_count | INTEGER | DEFAULT 0 | 数据包数量 |
+| duration | INTEGER | | 持续时间（秒） |
+| start_time | TIMESTAMP | NOT NULL | 开始时间 |
+| end_time | TIMESTAMP | | 结束时间 |
+| flags | VARCHAR(50) | | TCP标志 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+### 1.8 HTTP流量表（http_traffic）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | HTTP流量ID |
+| session_id | INTEGER | REFERENCES network_sessions(id) | 关联会话ID |
+| source_ip | INET | NOT NULL | 源IP地址 |
+| target_ip | INET | NOT NULL | 目标IP地址 |
+| method | VARCHAR(10) | NOT NULL | HTTP方法 |
+| host | VARCHAR(255) | | 主机名 |
+| url | TEXT | NOT NULL | 请求URL |
+| uri | TEXT | | URI |
+| status_code | INTEGER | | 响应状态码 |
+| user_agent | TEXT | | User-Agent |
+| referer | TEXT | | Referer |
+| request_headers | JSONB | | 请求头 |
+| response_headers | JSONB | | 响应头 |
+| request_body | TEXT | | 请求体 |
+| response_body | TEXT | | 响应体 |
+| content_type | VARCHAR(100) | | 内容类型 |
+| content_length | INTEGER | | 内容长度 |
+| timestamp | TIMESTAMP | NOT NULL | 时间戳 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+### 1.9 DNS查询表（dns_queries）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | DNS查询ID |
+| session_id | INTEGER | REFERENCES network_sessions(id) | 关联会话ID |
+| source_ip | INET | NOT NULL | 源IP地址 |
+| target_ip | INET | | DNS服务器IP |
+| query_type | VARCHAR(10) | NOT NULL | 查询类型（A/AAAA/MX/NS等） |
+| query_name | VARCHAR(255) | NOT NULL | 查询域名 |
+| answers | JSONB | | 应答结果 |
+| response_code | INTEGER | | 响应码 |
+| timestamp | TIMESTAMP | NOT NULL | 时间戳 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+### 1.10 FTP会话表（ftp_sessions）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | FTP会话ID |
+| session_id | INTEGER | REFERENCES network_sessions(id) | 关联会话ID |
+| source_ip | INET | NOT NULL | 源IP地址 |
+| target_ip | INET | NOT NULL | 目标IP地址 |
+| username | VARCHAR(100) | | 用户名 |
+| command | VARCHAR(50) | | FTP命令 |
+| argument | TEXT | | 命令参数 |
+| response_code | INTEGER | | 响应码 |
+| response_message | TEXT | | 响应消息 |
+| file_size | BIGINT | | 文件大小 |
+| file_name | VARCHAR(255) | | 文件名 |
+| timestamp | TIMESTAMP | NOT NULL | 时间戳 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+### 1.11 防火墙日志表（firewall_logs）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 防火墙日志ID |
+| timestamp | TIMESTAMP | NOT NULL | 时间戳 |
+| device_name | VARCHAR(100) | | 设备名称 |
+| action | VARCHAR(20) | NOT NULL | 动作（allow/deny/drop） |
+| source_ip | INET | | 源IP地址 |
+| source_port | INTEGER | | 源端口 |
+| source_zone | VARCHAR(50) | | 源区域 |
+| target_ip | INET | | 目标IP地址 |
+| target_port | INTEGER | | 目标端口 |
+| target_zone | VARCHAR(50) | | 目标区域 |
+| protocol | VARCHAR(10) | | 协议 |
+| rule_name | VARCHAR(100) | | 规则名称 |
+| rule_id | INTEGER | | 规则ID |
+| bytes_sent | BIGINT | | 发送字节数 |
+| bytes_received | BIGINT | | 接收字节数 |
+| packet_count | INTEGER | | 数据包数量 |
+| nat_source_ip | INET | | NAT源IP |
+| nat_source_port | INTEGER | | NAT源端口 |
+| nat_target_ip | INET | | NAT目标IP |
+| nat_target_port | INTEGER | | NAT目标端口 |
+| raw_log | TEXT | | 原始日志 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+### 1.12 WAF日志表（waf_logs）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | WAF日志ID |
+| timestamp | TIMESTAMP | NOT NULL | 时间戳 |
+| device_name | VARCHAR(100) | | 设备名称 |
+| action | VARCHAR(20) | NOT NULL | 动作（block/allow/challenge） |
+| rule_id | VARCHAR(50) | | 规则ID |
+| rule_name | VARCHAR(255) | | 规则名称 |
+| rule_category | VARCHAR(100) | | 规则类别 |
+| severity | VARCHAR(20) | | 严重程度 |
+| source_ip | INET | NOT NULL | 源IP地址 |
+| source_port | INTEGER | | 源端口 |
+| country | VARCHAR(100) | | 国家 |
+| target_host | VARCHAR(255) | | 目标主机 |
+| method | VARCHAR(10) | | HTTP方法 |
+| uri | TEXT | | 请求URI |
+| query_string | TEXT | | 查询字符串 |
+| user_agent | TEXT | | User-Agent |
+| referer | TEXT | | Referer |
+| request_headers | JSONB | | 请求头 |
+| request_body | TEXT | | 请求体 |
+| response_code | INTEGER | | 响应码 |
+| attack_type | VARCHAR(100) | | 攻击类型 |
+| matched_location | VARCHAR(100) | | 匹配位置 |
+| matched_value | TEXT | | 匹配值 |
+| session_id | VARCHAR(100) | | 会话ID |
+| raw_log | TEXT | | 原始日志 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+### 1.13 系统日志表（system_logs）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 系统日志ID |
+| timestamp | TIMESTAMP | NOT NULL | 时间戳 |
+| hostname | VARCHAR(100) | | 主机名 |
+| os_type | VARCHAR(50) | | 操作系统类型（Linux/Windows） |
+| facility | VARCHAR(50) | | 设施（syslog facility） |
+| severity | VARCHAR(20) | NOT NULL | 严重程度 |
+| program | VARCHAR(100) | | 程序名称 |
+| pid | INTEGER | | 进程ID |
+| message | TEXT | NOT NULL | 日志消息 |
+| username | VARCHAR(100) | | 用户名 |
+| process_name | VARCHAR(100) | | 进程名称 |
+| command_line | TEXT | | 命令行 |
+| event_id | VARCHAR(50) | | 事件ID（Windows） |
+| event_code | INTEGER | | 事件代码 |
+| source_ip | INET | | 源IP（远程登录等） |
+| raw_log | TEXT | | 原始日志 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+### 1.14 数据源配置表（data_sources）
+| 字段名 | 数据类型 | 约束 | 描述 |
+|-------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 数据源ID |
+| name | VARCHAR(100) | NOT NULL | 数据源名称 |
+| type | VARCHAR(50) | NOT NULL | 类型（suricata/zeek/firewall/waf/system/web） |
+| config | JSONB | NOT NULL | 配置（JSON格式） |
+| status | VARCHAR(20) | DEFAULT 'inactive' | 状态（active/inactive/error） |
+| last_seen | TIMESTAMP | | 最后活动时间 |
+| error_message | TEXT | | 错误信息 |
+| enabled | BOOLEAN | DEFAULT TRUE | 是否启用 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
 
 ## 2. InfluxDB 数据库设计
 

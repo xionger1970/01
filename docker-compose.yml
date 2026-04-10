@@ -102,6 +102,18 @@ services:
     depends_on:
       - elasticsearch
 
+  suricata:
+    image: jasonish/suricata:latest
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    network_mode: host
+    command: -i eth0 -c /etc/suricata/suricata.yaml
+    volumes:
+      - ./suricata-logs:/var/log/suricata
+      - ./suricata-config:/etc/suricata
+
 volumes:
   postgres_data:
   influxdb_data:
@@ -109,3 +121,5 @@ volumes:
   prometheus_data:
   grafana_data:
   elasticsearch_data:
+  suricata-logs:
+  suricata-config:

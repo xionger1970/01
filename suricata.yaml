@@ -1,0 +1,37 @@
+%YAML 1.1
+---
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert
+        - http
+        - dns
+        - tls
+        - files
+        - ssh
+        - flow
+        - stats
+
+logging:
+  default-log-level: info
+  outputs:
+  - console:
+      enabled: yes
+  - file:
+      enabled: yes
+      filename: suricata.log
+      append: yes
+
+host-mode: auto
+
+af-packet:
+  - interface: eth0
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes

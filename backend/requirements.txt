@@ -8,3 +8,8 @@ scapy
 passlib[bcrypt]
 pyjwt
 redis
+dpkt
+pcapy
+python-geoip
+python-geoip-geolite2
+netifaces
