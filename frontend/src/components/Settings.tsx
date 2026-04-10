@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, Tabs, Switch, Select, InputNumber, message, Divider, Row, Col, Space, Tag, Table, Modal, Progress, Badge, Typography, Avatar, Statistic } from 'antd';
-import { SettingOutlined, UserOutlined, BellOutlined, SafetyCertificateOutlined, CloudServerOutlined, DatabaseOutlined, MailOutlined, SaveOutlined, PlusOutlined, DeleteOutlined, EditOutlined, ApiOutlined, LaptopOutlined, GlobalOutlined, KeyOutlined, LockOutlined, CheckCircleOutlined, InfoCircleOutlined, MobileOutlined, SendOutlined, LinkOutlined, CodeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { SettingOutlined, UserOutlined, BellOutlined, SafetyCertificateOutlined, CloudServerOutlined, DatabaseOutlined, MailOutlined, SaveOutlined, PlusOutlined, DeleteOutlined, EditOutlined, ApiOutlined, LaptopOutlined, GlobalOutlined, KeyOutlined, LockOutlined, CheckCircleOutlined, InfoCircleOutlined, MobileOutlined, SendOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 const { Text, Title } = Typography;
@@ -293,49 +293,6 @@ const Settings: React.FC = () => {
                   <Col span={8}><Card size="small" variant="borderless" style={{ background: 'linear-gradient(135deg, #1890ff, #69c0ff)', borderRadius: 10 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>集成总数</span>} value={API_INTEGRATIONS.length} valueStyle={{ color: '#fff', fontWeight: 700 }} prefix={<ApiOutlined />} /></Card></Col>
                 </Row>
                 <Table columns={apiColumns} dataSource={API_INTEGRATIONS} pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 个集成` }} size="middle" style={{ borderRadius: 8, overflow: 'hidden' }} />
-              </div>
-            ),
-          },
-          {
-            key: 'about', label: <span style={{ padding: '4px 0' }}><InfoCircleOutlined style={{ marginRight: 6 }} />关于系统</span>,
-            children: (
-              <div style={{ maxWidth: 680 }}>
-                <div style={sectionStyle}>
-                  <div style={{ textAlign: 'center', padding: '24px 0 32px' }}>
-                    <SafetyCertificateOutlined style={{ fontSize: 56, color: '#1890ff', marginBottom: 16 }} />
-                    <Title level={3} style={{ margin: 0 }}>网络攻击态势感知系统</Title>
-                    <Text type="secondary" style={{ fontSize: 13 }}>Cyber Attack Situational Awareness System</Text>
-                    <div style={{ marginTop: 8 }}><Tag color="blue" style={{ fontSize: 13, padding: '2px 12px' }}>v2.0.0</Tag></div>
-                  </div>
-                </div>
-                <div style={sectionStyle}>
-                  <div style={sectionTitleStyle}><CodeOutlined style={{ color: '#722ed1' }} />技术栈</div>
-                  <Row gutter={[16, 12]}>
-                    {[
-                      { label: '前端框架', value: 'React 19 + TypeScript', color: '#61dafb' },
-                      { label: 'UI组件库', value: 'Ant Design 5', color: '#1890ff' },
-                      { label: '后端框架', value: 'FastAPI + Python', color: '#009688' },
-                      { label: '可视化引擎', value: 'ECharts + Recharts', color: '#fa8c16' },
-                      { label: '状态管理', value: 'Redux Toolkit', color: '#764abc' },
-                      { label: '构建工具', value: 'Vite', color: '#646cff' },
-                    ].map(item => (
-                      <Col span={12} key={item.label}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#fafafa', borderRadius: 8, border: '1px solid #f0f0f0' }}>
-                          <div style={{ width: 4, height: 28, borderRadius: 2, background: item.color }} />
-                          <div><Text type="secondary" style={{ fontSize: 11 }}>{item.label}</Text><br /><Text strong style={{ fontSize: 13 }}>{item.value}</Text></div>
-                        </div>
-                      </Col>
-                    ))}
-                  </Row>
-                </div>
-                <div style={sectionStyle}>
-                  <div style={sectionTitleStyle}><SafetyCertificateOutlined style={{ color: '#52c41a' }} />功能模块</div>
-                  <Row gutter={[8, 8]}>
-                    {['仪表盘', '攻击监控', '安全态势', '态势大屏', '威胁情报', '异常检测', '告警管理', '攻击回溯', '协同联动', '数据源管理', 'AI智能研判'].map((m, i) => (
-                      <Col key={m}><Tag color={['blue', 'red', 'green', 'orange', 'purple', 'cyan', 'gold', 'magenta', 'lime', 'geekblue', 'volcano'][i]} style={{ padding: '4px 12px', fontSize: 13, borderRadius: 6 }}>{m}</Tag></Col>
-                    ))}
-                  </Row>
-                </div>
               </div>
             ),
           },
