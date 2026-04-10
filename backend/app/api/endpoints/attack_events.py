@@ -4,6 +4,7 @@ from typing import List, Optional, Dict
 from datetime import datetime
 from app.core.database import db_manager
 from app.detectors.advanced_detector import advanced_detector
+from app.threat_intel import internal_intel_generator
 
 router = APIRouter()
 
@@ -124,6 +125,9 @@ def create_attack_event(event: AttackEventBase):
         "advanced_analysis": advanced_analysis
     }
     
+    # 生成内部威胁情报
+    internal_intel_generator.process_event(new_event)
+    
     return new_event
 
 @router.get("/stats")
@@ -189,4 +193,9 @@ def analyze_attack_data(data: Dict):
         "detections": detections,
         "analysis_time": datetime.now().isoformat()
     }
+
+@router.get("/internal-intel")
+def get_internal_intel():
+    """获取内部威胁情报"""
+    return internal_intel_generator.get_internal_intel()
 

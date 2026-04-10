@@ -43,6 +43,12 @@ class ThreatIntelManager:
                 'api_key': os.getenv('ALIENVAULT_OTX_API_KEY'),
                 'update_interval': 14400  # 4 hours
             },
+            'misp': {
+                'enabled': False,
+                'url': os.getenv('MISP_URL'),
+                'api_key': os.getenv('MISP_API_KEY'),
+                'update_interval': 18000  # 5 hours
+            },
             'abuseipdb': {
                 'enabled': False,
                 'api_key': os.getenv('ABUSEIPDB_API_KEY'),
@@ -376,7 +382,10 @@ class ThreatIntelManager:
                         if config['enabled']:
                             if source == 'public_feeds':
                                 self.update_from_public_feeds()
-                            # 其他数据源的更新逻辑
+                            elif source == 'alienvault_otx':
+                                self.update_from_alienvault_otx()
+                            elif source == 'misp':
+                                self.update_from_misp()
                         time.sleep(config['update_interval'])
                 except Exception as e:
                     print(f"Error in threat intel update thread: {e}")
@@ -486,6 +495,146 @@ class ThreatIntelManager:
                 'threat_indicators_count': len(self.threat_intel_data['threat_indicators']),
                 'last_updated': self.threat_intel_data['last_updated'].isoformat() if self.threat_intel_data['last_updated'] else None
             }
+    
+    def update_from_alienvault_otx(self):
+        """从 AlienVault OTX 更新威胁情报"""
+        try:
+            config = self.intel_sources['alienvault_otx']
+            api_key = config.get('api_key')
+            
+            if not api_key:
+                print("AlienVault OTX API key not configured")
+                return
+            
+            # OTX API 端点
+            base_url = "https://otx.alienvault.com/api/v1"
+            headers = {"X-OTX-API-KEY": api_key}
+            
+            # 获取最新的威胁指标
+            response = requests.get(f"{base_url}/pulses/subscribed", headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                pulses = data.get('results', [])
+                
+                new_ips = set()
+                new_domains = set()
+                new_urls = set()
+                new_hashes = set()
+                new_indicators = []
+                
+                for pulse in pulses:
+                    indicators = pulse.get('indicators', [])
+                    for indicator in indicators:
+                        indicator_type = indicator.get('type')
+                        indicator_value = indicator.get('indicator')
+                        
+                        if indicator_type == 'IPv4':
+                            new_ips.add(indicator_value)
+                        elif indicator_type == 'domain':
+                            new_domains.add(indicator_value)
+                        elif indicator_type == 'URL':
+                            new_urls.add(indicator_value)
+                        elif indicator_type in ['FileHash-MD5', 'FileHash-SHA1', 'FileHash-SHA256']:
+                            new_hashes.add(indicator_value)
+                        
+                        # 添加威胁指标
+                        new_indicators.append({
+                            'id': f'otx_{indicator.get("id")}',
+                            'type': indicator_type,
+                            'indicator': indicator_value,
+                            'description': pulse.get('description', ''),
+                            'severity': 'high' if pulse.get('severity') else 'medium',
+                            'created_at': pulse.get('created', datetime.now().isoformat()),
+                            'source': 'AlienVault OTX',
+                            'tags': pulse.get('tags', [])
+                        })
+                
+                with self.lock:
+                    self.threat_intel_data['malicious_ips'].update(new_ips)
+                    self.threat_intel_data['malicious_domains'].update(new_domains)
+                    self.threat_intel_data['malicious_urls'].update(new_urls)
+                    self.threat_intel_data['malicious_hashes'].update(new_hashes)
+                    self.threat_intel_data['threat_indicators'].extend(new_indicators)
+                    self.threat_intel_data['last_updated'] = datetime.now()
+                
+                self._update_threat_scores()
+                self._save_to_file()
+                print(f"Threat intelligence updated from AlienVault OTX at {self.threat_intel_data['last_updated']}")
+            else:
+                print(f"Error updating from AlienVault OTX: {response.status_code}")
+        except Exception as e:
+            print(f"Error updating from AlienVault OTX: {e}")
+    
+    def update_from_misp(self):
+        """从 MISP 更新威胁情报"""
+        try:
+            config = self.intel_sources['misp']
+            url = config.get('url')
+            api_key = config.get('api_key')
+            
+            if not url or not api_key:
+                print("MISP URL or API key not configured")
+                return
+            
+            # MISP API 端点
+            headers = {"Authorization": api_key, "Accept": "application/json"}
+            
+            # 获取最新的事件
+            response = requests.get(f"{url}/events/restSearch", headers=headers, params={"limit": 10}, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                events = data.get('response', [])
+                
+                new_ips = set()
+                new_domains = set()
+                new_urls = set()
+                new_hashes = set()
+                new_indicators = []
+                
+                for event in events:
+                    attributes = event.get('Attribute', [])
+                    for attribute in attributes:
+                        attribute_type = attribute.get('type')
+                        attribute_value = attribute.get('value')
+                        
+                        if attribute_type == 'ip-dst' or attribute_type == 'ip-src':
+                            new_ips.add(attribute_value)
+                        elif attribute_type == 'domain':
+                            new_domains.add(attribute_value)
+                        elif attribute_type == 'url':
+                            new_urls.add(attribute_value)
+                        elif attribute_type in ['md5', 'sha1', 'sha256']:
+                            new_hashes.add(attribute_value)
+                        
+                        # 添加威胁指标
+                        new_indicators.append({
+                            'id': f'misp_{attribute.get("id")}',
+                            'type': attribute_type,
+                            'indicator': attribute_value,
+                            'description': event.get('info', ''),
+                            'severity': 'high' if event.get('threat_level_id') == 1 else 'medium',
+                            'created_at': attribute.get('timestamp', datetime.now().timestamp()),
+                            'source': 'MISP',
+                            'tags': [tag.get('name') for tag in event.get('Tag', [])]
+                        })
+                
+                with self.lock:
+                    self.threat_intel_data['malicious_ips'].update(new_ips)
+                    self.threat_intel_data['malicious_domains'].update(new_domains)
+                    self.threat_intel_data['malicious_urls'].update(new_urls)
+                    self.threat_intel_data['malicious_hashes'].update(new_hashes)
+                    self.threat_intel_data['threat_indicators'].extend(new_indicators)
+                    self.threat_intel_data['last_updated'] = datetime.now()
+                
+                self._update_threat_scores()
+                self._save_to_file()
+                print(f"Threat intelligence updated from MISP at {self.threat_intel_data['last_updated']}")
+            else:
+                print(f"Error updating from MISP: {response.status_code}")
+        except Exception as e:
+            print(f"Error updating from MISP: {e}")
 
 # 创建单例实例
 threat_intel_manager = ThreatIntelManager()

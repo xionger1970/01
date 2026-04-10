@@ -156,4 +156,39 @@ export const configurationsService = {
   },
 };
 
+// Reporting endpoints
+export const reportingService = {
+  generateReport: async (reportType: string, parameters?: any) => {
+    const response = await api.post('/reporting/generate-report', {
+      report_type: reportType,
+      parameters
+    });
+    return response.data;
+  },
+  getReports: async (reportType?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (reportType) params.append('report_type', reportType);
+    if (status) params.append('status', status);
+    
+    const response = await api.get(`/reporting/reports?${params.toString()}`);
+    return response.data;
+  },
+  getReport: async (reportId: number) => {
+    const response = await api.get(`/reporting/reports/${reportId}`);
+    return response.data;
+  },
+  getReportStatus: async (reportId: number) => {
+    const response = await api.get(`/reporting/reports/${reportId}/status`);
+    return response.data;
+  },
+  getReportTemplates: async () => {
+    const response = await api.get('/reporting/report-templates');
+    return response.data;
+  },
+  deleteReport: async (reportId: number) => {
+    const response = await api.delete(`/reporting/reports/${reportId}`);
+    return response.data;
+  },
+};
+
 export default api;

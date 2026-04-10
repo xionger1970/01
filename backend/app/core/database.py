@@ -183,19 +183,22 @@ if USE_MOCK_DATABASE:
     db_manager = MockDatabaseManager()
 else:
     import psycopg2
+    from psycopg2 import pool
     from influxdb_client import InfluxDBClient, Point
     from influxdb_client.client.write_api import SYNCHRONOUS
     
     class DatabaseManager:
         def __init__(self):
-            self.pg_conn = psycopg2.connect(
+            # 使用PostgreSQL连接池
+            self.pg_pool = pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=20,
                 host=os.getenv('POSTGRES_HOST', 'localhost'),
                 port=os.getenv('POSTGRES_PORT', '5432'),
                 database=os.getenv('POSTGRES_DB', 'web_attack_awareness'),
                 user=os.getenv('POSTGRES_USER', 'admin'),
                 password=os.getenv('POSTGRES_PASSWORD', 'password123')
             )
-            self.pg_cursor = self.pg_conn.cursor()
             
             self.influx_client = InfluxDBClient(
                 url=os.getenv('INFLUXDB_URL', 'http://localhost:8086'),
@@ -207,21 +210,29 @@ else:
             self.influx_query_api = self.influx_client.query_api()
         
         def close(self):
-            if self.pg_cursor:
-                self.pg_cursor.close()
-            if self.pg_conn:
-                self.pg_conn.close()
+            if self.pg_pool:
+                self.pg_pool.closeall()
             if self.influx_client:
                 self.influx_client.close()
         
         def execute_pg_query(self, query, params=None):
+            conn = None
+            cursor = None
             try:
-                self.pg_cursor.execute(query, params or ())
-                self.pg_conn.commit()
-                return self.pg_cursor
+                conn = self.pg_pool.getconn()
+                cursor = conn.cursor()
+                cursor.execute(query, params or ())
+                conn.commit()
+                return cursor
             except Exception as e:
-                self.pg_conn.rollback()
+                if conn:
+                    conn.rollback()
                 raise e
+            finally:
+                if cursor:
+                    cursor.close()
+                if conn:
+                    self.pg_pool.putconn(conn)
         
         def insert_influx_data(self, measurement, tags, fields, time=None):
             point = Point(measurement)

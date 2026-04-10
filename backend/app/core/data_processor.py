@@ -1,5 +1,7 @@
 from datetime import datetime
 import json
+import concurrent.futures
+from typing import List, Dict, Any
 
 class DataProcessor:
     def __init__(self):
@@ -13,6 +15,8 @@ class DataProcessor:
             'malware': 'Malware Infection',
             'phishing': 'Phishing Attempt'
         }
+        # 并行处理线程池
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
     
     def process(self, data):
         """Process collected data"""
@@ -24,6 +28,20 @@ class DataProcessor:
             return self._process_log_entry(data)
         else:
             return self._process_generic_data(data)
+    
+    def batch_process(self, data_list: List[Dict]) -> List[Dict]:
+        """批量处理数据"""
+        results = []
+        # 使用线程池并行处理
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_data = {executor.submit(self.process, data): data for data in data_list}
+            for future in concurrent.futures.as_completed(future_to_data):
+                try:
+                    result = future.result()
+                    results.append(result)
+                except Exception as e:
+                    print(f"Error processing data: {e}")
+        return results
     
     def _process_attack_event(self, data):
         """Process attack event data"""
@@ -88,9 +106,10 @@ class DataProcessor:
         }
         
         # Check for attack patterns in log entry
-        if self._detect_attack(log_entry):
-            log_entry['attack_type'] = self._detect_attack(log_entry)
-            log_entry['severity'] = self._get_attack_severity(log_entry['attack_type'])
+        attack_type = self._detect_attack(log_entry)
+        if attack_type:
+            log_entry['attack_type'] = attack_type
+            log_entry['severity'] = self._get_attack_severity(attack_type)
             return {'type': 'attack_event', 'data': log_entry}
         
         return {'type': 'log_entry', 'data': log_entry}
@@ -129,3 +148,7 @@ class DataProcessor:
             'malicious_crawler': 'low'
         }
         return severity_map.get(attack_type, 'medium')
+    
+    def shutdown(self):
+        """关闭线程池"""
+        self.executor.shutdown(wait=True)

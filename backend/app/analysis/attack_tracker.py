@@ -28,6 +28,41 @@ class AttackTracker:
         # 攻击路径
         self.attack_paths = []
         
+        # 多源事件存储
+        self.multi_source_events = {
+            'network': [],
+            'host': [],
+            'application': [],
+            'cloud': [],
+            'container': []
+        }
+        
+        # 事件关联网络
+        self.event_network = {
+            'nodes': [],
+            'edges': []
+        }
+        
+        # 事件关联规则
+        self.correlation_rules = {
+            'time_based': {
+                'window': 300,  # 5分钟时间窗口
+                'description': '时间窗口内的事件关联'
+            },
+            'ip_based': {
+                'description': '基于IP地址的事件关联'
+            },
+            'asset_based': {
+                'description': '基于资产的事件关联'
+            },
+            'user_based': {
+                'description': '基于用户的事件关联'
+            },
+            'attack_pattern_based': {
+                'description': '基于攻击模式的事件关联'
+            }
+        }
+        
         # 攻击模式识别
         self.attack_patterns = {
             'reconnaissance': {
@@ -74,6 +109,7 @@ class AttackTracker:
         
         # 启动分析线程
         self._start_analysis_thread()
+        self._start_multi_source_analysis_thread()
     
     def _start_analysis_thread(self):
         """启动分析线程"""
@@ -83,6 +119,16 @@ class AttackTracker:
                 self._analyze_recent_events()
         
         analysis_thread = threading.Thread(target=analyze_events, daemon=True)
+        analysis_thread.start()
+    
+    def _start_multi_source_analysis_thread(self):
+        """启动多源事件分析线程"""
+        def analyze_multi_source_events():
+            while True:
+                time.sleep(30)  # 每30秒分析一次
+                self._analyze_multi_source_events()
+        
+        analysis_thread = threading.Thread(target=analyze_multi_source_events, daemon=True)
         analysis_thread.start()
     
     def add_attack_event(self, event: Dict) -> Dict:
@@ -114,6 +160,190 @@ class AttackTracker:
                 self.asset_impacts[event_with_id['asset_id']].append(event_id)
             
             return event_with_id
+    
+    def add_multi_source_event(self, event: Dict, source_type: str) -> Dict:
+        """添加多源事件"""
+        with self.lock:
+            if source_type not in self.multi_source_events:
+                self.multi_source_events[source_type] = []
+            
+            event_id = len(self.multi_source_events[source_type]) + 1
+            event_with_id = {
+                'id': event_id,
+                'source_type': source_type,
+                'timestamp': event.get('timestamp', datetime.now()),
+                'event_type': event.get('event_type'),
+                'source_ip': event.get('source_ip'),
+                'target_ip': event.get('target_ip'),
+                'asset_id': event.get('asset_id'),
+                'user': event.get('user'),
+                'severity': event.get('severity', 'medium'),
+                'details': event.get('details', {})
+            }
+            
+            self.multi_source_events[source_type].append(event_with_id)
+            
+            # 构建事件关联网络
+            self._build_event_network()
+            
+            return event_with_id
+    
+    def _analyze_multi_source_events(self):
+        """分析多源事件，进行关联分析"""
+        with self.lock:
+            # 获取所有多源事件
+            all_events = []
+            for source_type, events in self.multi_source_events.items():
+                all_events.extend(events)
+            
+            # 按时间排序
+            all_events.sort(key=lambda x: x['timestamp'])
+            
+            # 基于时间窗口关联事件
+            self._correlate_events_by_time_window(all_events)
+            
+            # 基于IP地址关联事件
+            self._correlate_events_by_ip(all_events)
+            
+            # 基于资产关联事件
+            self._correlate_events_by_asset(all_events)
+            
+            # 基于用户关联事件
+            self._correlate_events_by_user(all_events)
+            
+            # 基于攻击模式关联事件
+            self._correlate_events_by_attack_pattern(all_events)
+    
+    def _correlate_events_by_time_window(self, events: List[Dict]):
+        """基于时间窗口关联事件"""
+        time_window = self.correlation_rules['time_based']['window']
+        
+        for i, event1 in enumerate(events):
+            for event2 in events[i+1:]:
+                time_diff = abs((event2['timestamp'] - event1['timestamp']).total_seconds())
+                if time_diff <= time_window:
+                    # 构建关联
+                    self._add_event_relation(event1, event2, 'time_based')
+    
+    def _correlate_events_by_ip(self, events: List[Dict]):
+        """基于IP地址关联事件"""
+        # 按源IP分组
+        events_by_source_ip = defaultdict(list)
+        for event in events:
+            if event.get('source_ip'):
+                events_by_source_ip[event['source_ip']].append(event)
+        
+        # 按目标IP分组
+        events_by_target_ip = defaultdict(list)
+        for event in events:
+            if event.get('target_ip'):
+                events_by_target_ip[event['target_ip']].append(event)
+        
+        # 关联相同源IP的事件
+        for ip, ip_events in events_by_source_ip.items():
+            for i, event1 in enumerate(ip_events):
+                for event2 in ip_events[i+1:]:
+                    self._add_event_relation(event1, event2, 'ip_based')
+        
+        # 关联相同目标IP的事件
+        for ip, ip_events in events_by_target_ip.items():
+            for i, event1 in enumerate(ip_events):
+                for event2 in ip_events[i+1:]:
+                    self._add_event_relation(event1, event2, 'ip_based')
+    
+    def _correlate_events_by_asset(self, events: List[Dict]):
+        """基于资产关联事件"""
+        events_by_asset = defaultdict(list)
+        for event in events:
+            if event.get('asset_id'):
+                events_by_asset[event['asset_id']].append(event)
+        
+        for asset_id, asset_events in events_by_asset.items():
+            for i, event1 in enumerate(asset_events):
+                for event2 in asset_events[i+1:]:
+                    self._add_event_relation(event1, event2, 'asset_based')
+    
+    def _correlate_events_by_user(self, events: List[Dict]):
+        """基于用户关联事件"""
+        events_by_user = defaultdict(list)
+        for event in events:
+            if event.get('user'):
+                events_by_user[event['user']].append(event)
+        
+        for user, user_events in events_by_user.items():
+            for i, event1 in enumerate(user_events):
+                for event2 in user_events[i+1:]:
+                    self._add_event_relation(event1, event2, 'user_based')
+    
+    def _correlate_events_by_attack_pattern(self, events: List[Dict]):
+        """基于攻击模式关联事件"""
+        for i, event1 in enumerate(events):
+            for event2 in events[i+1:]:
+                # 检查是否属于相同的攻击模式
+                phase1 = self._determine_attack_phase(event1.get('event_type'))
+                phase2 = self._determine_attack_phase(event2.get('event_type'))
+                
+                if phase1 != 'unknown' and phase2 != 'unknown' and phase1 == phase2:
+                    self._add_event_relation(event1, event2, 'attack_pattern_based')
+    
+    def _add_event_relation(self, event1: Dict, event2: Dict, relation_type: str):
+        """添加事件关联"""
+        # 构建关联ID
+        relation_id = f"{event1['source_type']}_{event1['id']}_{event2['source_type']}_{event2['id']}"
+        
+        # 检查是否已存在关联
+        for edge in self.event_network['edges']:
+            if edge['id'] == relation_id:
+                return
+        
+        # 添加节点
+        self._add_event_node(event1)
+        self._add_event_node(event2)
+        
+        # 添加边
+        self.event_network['edges'].append({
+            'id': relation_id,
+            'source': f"{event1['source_type']}_{event1['id']}",
+            'target': f"{event2['source_type']}_{event2['id']}",
+            'relation_type': relation_type,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    def _add_event_node(self, event: Dict):
+        """添加事件节点"""
+        node_id = f"{event['source_type']}_{event['id']}"
+        
+        # 检查节点是否已存在
+        for node in self.event_network['nodes']:
+            if node['id'] == node_id:
+                return
+        
+        # 添加节点
+        self.event_network['nodes'].append({
+            'id': node_id,
+            'source_type': event['source_type'],
+            'event_type': event.get('event_type'),
+            'timestamp': event['timestamp'].isoformat(),
+            'severity': event.get('severity'),
+            'details': event.get('details')
+        })
+    
+    def _build_event_network(self):
+        """构建事件关联网络"""
+        # 清空现有网络
+        self.event_network = {'nodes': [], 'edges': []}
+        
+        # 获取所有多源事件
+        all_events = []
+        for source_type, events in self.multi_source_events.items():
+            all_events.extend(events)
+        
+        # 关联事件
+        self._correlate_events_by_time_window(all_events)
+        self._correlate_events_by_ip(all_events)
+        self._correlate_events_by_asset(all_events)
+        self._correlate_events_by_user(all_events)
+        self._correlate_events_by_attack_pattern(all_events)
     
     def _determine_attack_phase(self, attack_type: Optional[str]) -> str:
         """确定攻击阶段"""
@@ -381,6 +611,85 @@ class AttackTracker:
                     })
             
             return stats
+    
+    def get_multi_source_events(self, source_type: Optional[str] = None) -> Dict:
+        """获取多源事件"""
+        with self.lock:
+            if source_type and source_type in self.multi_source_events:
+                return self.multi_source_events[source_type]
+            return self.multi_source_events
+    
+    def get_event_network(self) -> Dict:
+        """获取事件关联网络"""
+        with self.lock:
+            return self.event_network
+    
+    def get_multi_source_statistics(self, hours: int = 24) -> Dict:
+        """获取多源事件统计信息"""
+        with self.lock:
+            cutoff_time = datetime.now() - timedelta(hours=hours)
+            all_events = []
+            for source_type, events in self.multi_source_events.items():
+                recent_events = [event for event in events if event['timestamp'] >= cutoff_time]
+                all_events.extend(recent_events)
+            
+            stats = {
+                'total_events': len(all_events),
+                'events_by_source': defaultdict(int),
+                'events_by_type': defaultdict(int),
+                'events_by_severity': defaultdict(int),
+                'top_sources': defaultdict(int),
+                'top_targets': defaultdict(int),
+                'event_network': {
+                    'nodes_count': len(self.event_network['nodes']),
+                    'edges_count': len(self.event_network['edges'])
+                }
+            }
+            
+            for event in all_events:
+                stats['events_by_source'][event['source_type']] += 1
+                stats['events_by_type'][event.get('event_type', 'unknown')] += 1
+                stats['events_by_severity'][event.get('severity', 'medium')] += 1
+                
+                if event.get('source_ip'):
+                    stats['top_sources'][event['source_ip']] += 1
+                if event.get('target_ip'):
+                    stats['top_targets'][event['target_ip']] += 1
+            
+            # 排序统计
+            stats['top_sources'] = dict(sorted(stats['top_sources'].items(), key=lambda x: x[1], reverse=True)[:10])
+            stats['top_targets'] = dict(sorted(stats['top_targets'].items(), key=lambda x: x[1], reverse=True)[:10])
+            
+            return stats
+    
+    def get_correlated_events(self, event_id: int, source_type: str) -> List[Dict]:
+        """获取与指定事件相关联的事件"""
+        with self.lock:
+            correlated_events = []
+            node_id = f"{source_type}_{event_id}"
+            
+            # 查找相关联的边
+            for edge in self.event_network['edges']:
+                if edge['source'] == node_id:
+                    # 获取目标事件
+                    target_node_id = edge['target']
+                    target_source_type, target_event_id = target_node_id.split('_', 1)
+                    
+                    # 查找目标事件
+                    for event in self.multi_source_events.get(target_source_type, []):
+                        if event['id'] == int(target_event_id):
+                            correlated_events.append(event)
+                elif edge['target'] == node_id:
+                    # 获取源事件
+                    source_node_id = edge['source']
+                    source_source_type, source_event_id = source_node_id.split('_', 1)
+                    
+                    # 查找源事件
+                    for event in self.multi_source_events.get(source_source_type, []):
+                        if event['id'] == int(source_event_id):
+                            correlated_events.append(event)
+            
+            return correlated_events
 
 # 创建单例实例
 attack_tracker = AttackTracker()

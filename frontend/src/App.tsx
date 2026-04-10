@@ -3,7 +3,7 @@ import { ConfigProvider, Layout, Menu, Space, Spin, Button } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import 'antd/dist/reset.css';
 import './index.css';
-import { DashboardOutlined, AlertOutlined, SettingOutlined, ApiOutlined, AreaChartOutlined, TeamOutlined, HistoryOutlined, BarChartOutlined, LinkOutlined, RobotOutlined, DatabaseOutlined, SafetyOutlined, LogoutOutlined } from '@ant-design/icons';
+import { DashboardOutlined, AlertOutlined, SettingOutlined, ApiOutlined, AreaChartOutlined, TeamOutlined, HistoryOutlined, BarChartOutlined, LinkOutlined, RobotOutlined, DatabaseOutlined, SafetyOutlined, LogoutOutlined, MonitorOutlined } from '@ant-design/icons';
 import authService from './services/authService';
 import store from './store';
 
@@ -19,6 +19,8 @@ const SecuritySituation = lazy(() => import('./components/SecuritySituation'));
 const Orchestration = lazy(() => import('./components/Orchestration'));
 const AIAnalysis = lazy(() => import('./components/AIAnalysis'));
 const DataSourceManagement = lazy(() => import('./components/DataSourceManagement'));
+const Reporting = lazy(() => import('./components/Reporting'));
+const PerformanceMonitor = lazy(() => import('./components/PerformanceMonitor'));
 
 const { Header, Content, Sider } = Layout;
 
@@ -49,6 +51,8 @@ const App: React.FC = () => {
       'orchestration': <Orchestration />,
       'data-sources': <DataSourceManagement />,
       'ai-analysis': <AIAnalysis />,
+      'reporting': <Reporting />,
+      'performance': <PerformanceMonitor />,
       'settings': <Settings />,
     };
     return (
@@ -73,6 +77,8 @@ const App: React.FC = () => {
     { key: 'orchestration', icon: <LinkOutlined />, label: '协同联动' },
     { key: 'data-sources', icon: <DatabaseOutlined />, label: '数据源管理' },
     { key: 'ai-analysis', icon: <RobotOutlined />, label: 'AI智能分析' },
+    { key: 'reporting', icon: <BarChartOutlined />, label: '报告生成' },
+    { key: 'performance', icon: <MonitorOutlined />, label: '性能监控' },
     { type: 'divider' },
     { key: 'settings', icon: <SettingOutlined />, label: '系统设置' },
   ];
