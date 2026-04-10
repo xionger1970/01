@@ -4,12 +4,13 @@ import random
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 import threading
-from collections import defaultdict
+from collections import defaultdict, Counter
 from app.alerting.alert_manager import alert_manager
 from app.threat_intel.intel_manager import threat_intel_manager
 from app.detectors.advanced_detector import advanced_detector
 from app.detectors.anomaly_detector import anomaly_detector
 from app.analysis.attack_tracker import attack_tracker
+import numpy as np
 
 class AIAnalyzer:
     def __init__(self):
@@ -29,7 +30,9 @@ class AIAnalyzer:
                     '异常网络通信',
                     '权限提升',
                     '横向移动'
-                ]
+                ],
+                'severity': 'critical',
+                'mitigation': ['隔离受感染系统', '断开网络连接', '恢复备份']
             },
             'apt': {
                 'name': '高级持续性威胁',
@@ -40,7 +43,9 @@ class AIAnalyzer:
                     '自定义恶意代码',
                     '数据窃取',
                     '反检测技术'
-                ]
+                ],
+                'severity': 'critical',
+                'mitigation': ['全面安全审计', '网络流量分析', '威胁狩猎']
             },
             'phishing': {
                 'name': '钓鱼攻击',
@@ -51,7 +56,9 @@ class AIAnalyzer:
                     '社会工程学',
                     '凭证窃取',
                     '恶意附件'
-                ]
+                ],
+                'severity': 'high',
+                'mitigation': ['邮件过滤', '用户培训', '多因素认证']
             },
             'ddos': {
                 'name': 'DDoS攻击',
@@ -62,7 +69,9 @@ class AIAnalyzer:
                     '多源IP攻击',
                     '服务不可用',
                     '资源耗尽'
-                ]
+                ],
+                'severity': 'high',
+                'mitigation': ['流量过滤', 'CDN防护', '速率限制']
             },
             'insider_threat': {
                 'name': '内部威胁',
@@ -73,15 +82,65 @@ class AIAnalyzer:
                     '异常登录行为',
                     '数据泄露',
                     '违反安全策略'
-                ]
+                ],
+                'severity': 'medium',
+                'mitigation': ['访问控制审计', '行为分析', '权限管理']
+            },
+            'web_attack': {
+                'name': 'Web攻击',
+                'description': '检测Web应用攻击',
+                'patterns': [
+                    'SQL注入',
+                    'XSS攻击',
+                    'CSRF攻击',
+                    '命令注入',
+                    '权限绕过'
+                ],
+                'severity': 'high',
+                'mitigation': ['WAF部署', '输入验证', '代码审计']
+            },
+            'malware': {
+                'name': '恶意软件',
+                'description': '检测恶意软件感染',
+                'patterns': [
+                    '异常进程',
+                    '恶意文件',
+                    '异常网络连接',
+                    '系统修改',
+                    '资源异常使用'
+                ],
+                'severity': 'high',
+                'mitigation': ['端点保护', '恶意软件扫描', '系统隔离']
             }
         }
         
         # 分析结果缓存
         self.analysis_cache = {}
         
+        # 机器学习模型参数
+        self.ml_model = {
+            'anomaly_threshold': 0.7,
+            'confidence_threshold': 0.65,
+            'pattern_weights': {
+                'network': 0.3,
+                'system': 0.25,
+                'user': 0.2,
+                'data': 0.25
+            }
+        }
+        
+        # 攻击模式识别
+        self.attack_patterns = {
+            'lateral_movement': ['SMB连接', '远程桌面', 'PowerShell执行'],
+            'privilege_escalation': ['权限提升', 'UAC绕过', '服务利用'],
+            'data_exfiltration': ['大量数据传输', '异常DNS查询', '加密通信']
+        }
+        
         # 启动分析线程
         self._start_analysis_thread()
+        
+        # 启动实时分析线程
+        self._start_realtime_analysis_thread()
     
     def _start_analysis_thread(self):
         """启动分析线程"""
@@ -93,6 +152,16 @@ class AIAnalyzer:
         analysis_thread = threading.Thread(target=analyze_alerts, daemon=True)
         analysis_thread.start()
     
+    def _start_realtime_analysis_thread(self):
+        """启动实时分析线程"""
+        def realtime_analysis():
+            while True:
+                time.sleep(5)  # 每5秒进行一次实时分析
+                self._analyze_realtime_events()
+        
+        realtime_thread = threading.Thread(target=realtime_analysis, daemon=True)
+        realtime_thread.start()
+    
     def analyze_alert(self, alert: Dict) -> Dict:
         """分析单个告警"""
         with self.lock:
@@ -101,6 +170,20 @@ class AIAnalyzer:
             
             # 分析告警
             analysis_result = self._analyze_alert_content(alert)
+            
+            # 增强分析：添加攻击模式识别
+            attack_patterns = self._identify_attack_patterns(alert)
+            if attack_patterns:
+                analysis_result['attack_patterns'] = attack_patterns
+            
+            # 增强分析：添加威胁评分
+            threat_score = self._calculate_threat_score(analysis_result, alert)
+            analysis_result['threat_score'] = threat_score
+            
+            # 增强分析：添加预测性分析
+            predictive_analysis = self._predict_attack_outcome(alert, analysis_result)
+            if predictive_analysis:
+                analysis_result['predictive_analysis'] = predictive_analysis
             
             analysis_end = datetime.now()
             analysis_duration = (analysis_end - analysis_start).total_seconds()
@@ -112,6 +195,7 @@ class AIAnalyzer:
                 'duration': analysis_duration,
                 'result': analysis_result,
                 'confidence': analysis_result.get('confidence', 0.5),
+                'threat_score': threat_score,
                 'recommendations': analysis_result.get('recommendations', []),
                 'created_at': datetime.now()
             }
@@ -461,6 +545,145 @@ class AIAnalyzer:
         # 这里可以添加自动分析逻辑
         # 例如：分析新的告警并生成智能建议
         pass
+    
+    def _analyze_realtime_events(self):
+        """分析实时事件"""
+        # 这里可以添加实时事件分析逻辑
+        # 例如：监控网络流量、系统行为等
+        pass
+    
+    def _identify_attack_patterns(self, alert: Dict) -> List[str]:
+        """识别攻击模式"""
+        patterns = []
+        details = alert.get('details', {})
+        alert_message = details.get('message', '').lower()
+        
+        # 识别横向移动模式
+        for pattern in self.attack_patterns['lateral_movement']:
+            if pattern.lower() in alert_message:
+                patterns.append('lateral_movement')
+                break
+        
+        # 识别权限提升模式
+        for pattern in self.attack_patterns['privilege_escalation']:
+            if pattern.lower() in alert_message:
+                patterns.append('privilege_escalation')
+                break
+        
+        # 识别数据泄露模式
+        for pattern in self.attack_patterns['data_exfiltration']:
+            if pattern.lower() in alert_message:
+                patterns.append('data_exfiltration')
+                break
+        
+        return patterns
+    
+    def _calculate_threat_score(self, analysis_result: Dict, alert: Dict) -> float:
+        """计算威胁评分"""
+        score = 0.0
+        
+        # 基于威胁类型的基础分数
+        threat_type = analysis_result.get('threat_type')
+        threat_scores = {
+            'ransomware': 0.9,
+            'apt': 0.85,
+            'web_attack': 0.75,
+            'malware': 0.7,
+            'phishing': 0.65,
+            'ddos': 0.6,
+            'insider_threat': 0.5
+        }
+        
+        if threat_type in threat_scores:
+            score += threat_scores[threat_type] * 0.5
+        
+        # 基于置信度的分数
+        confidence = analysis_result.get('confidence', 0.5)
+        score += confidence * 0.3
+        
+        # 基于告警严重性的分数
+        severity = alert.get('severity', 'medium')
+        severity_scores = {
+            'critical': 0.9,
+            'high': 0.7,
+            'medium': 0.5,
+            'low': 0.3
+        }
+        
+        if severity in severity_scores:
+            score += severity_scores[severity] * 0.2
+        
+        # 确保分数在0-1之间
+        return min(max(score, 0), 1)
+    
+    def _predict_attack_outcome(self, alert: Dict, analysis_result: Dict) -> Dict:
+        """预测攻击结果"""
+        threat_type = analysis_result.get('threat_type')
+        
+        predictions = {
+            'ransomware': {
+                'outcome': '数据加密和勒索要求',
+                'impact': '高',
+                'probability': 0.85,
+                'mitigation_time': '立即'
+            },
+            'apt': {
+                'outcome': '长期潜伏和数据窃取',
+                'impact': '严重',
+                'probability': 0.75,
+                'mitigation_time': '24小时内'
+            },
+            'web_attack': {
+                'outcome': '数据泄露或服务中断',
+                'impact': '中等',
+                'probability': 0.7,
+                'mitigation_time': '4小时内'
+            },
+            'malware': {
+                'outcome': '系统感染和数据损坏',
+                'impact': '高',
+                'probability': 0.8,
+                'mitigation_time': '立即'
+            },
+            'phishing': {
+                'outcome': '凭证泄露和账户接管',
+                'impact': '中等',
+                'probability': 0.65,
+                'mitigation_time': '2小时内'
+            }
+        }
+        
+        return predictions.get(threat_type, {
+            'outcome': '未知',
+            'impact': '低',
+            'probability': 0.3,
+            'mitigation_time': '不确定'
+        })
+    
+    def analyze_batch_alerts(self, alerts: List[Dict]) -> Dict:
+        """批量分析告警"""
+        with self.lock:
+            analysis_start = datetime.now()
+            results = []
+            threat_summary = Counter()
+            
+            for alert in alerts:
+                analysis = self.analyze_alert(alert)
+                results.append(analysis)
+                threat_type = analysis.get('result', {}).get('threat_type')
+                if threat_type:
+                    threat_summary[threat_type] += 1
+            
+            analysis_end = datetime.now()
+            analysis_duration = (analysis_end - analysis_start).total_seconds()
+            
+            return {
+                'total_alerts': len(alerts),
+                'analysis_duration': analysis_duration,
+                'threat_summary': dict(threat_summary),
+                'results': results,
+                'created_at': datetime.now()
+            }
 
 # 创建单例实例
 ai_analyzer = AIAnalyzer()

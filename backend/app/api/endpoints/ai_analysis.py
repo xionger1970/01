@@ -14,6 +14,9 @@ class AnalyzeRequest(BaseModel):
     event_data: str = ""
     model: str = "default"
 
+class BatchAnalyzeRequest(BaseModel):
+    alerts: List[Dict] = []
+
 @router.post("/analyze", response_model=Dict)
 def analyze_event(request: AnalyzeRequest):
     """智能分析事件"""
@@ -103,20 +106,40 @@ def get_threat_models():
     """获取威胁模型"""
     return ai_analyzer.get_threat_models()
 
-@router.post("/batch-analyze-alerts", response_model=List[Dict])
-def batch_analyze_alerts(alert_ids: List[int]):
+@router.post("/batch-analyze-alerts", response_model=Dict)
+def batch_analyze_alerts(request: BatchAnalyzeRequest):
     """批量分析告警"""
-    results = []
-    for alert_id in alert_ids:
-        try:
+    try:
+        alerts = request.alerts
+        if not alerts:
+            raise HTTPException(status_code=400, detail="告警列表不能为空")
+        
+        analysis_result = ai_analyzer.analyze_batch_alerts(alerts)
+        return analysis_result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"批量分析失败: {str(e)}")
+
+@router.post("/batch-analyze-by-ids", response_model=Dict)
+def batch_analyze_by_ids(alert_ids: List[int]):
+    """根据ID批量分析告警"""
+    try:
+        alerts = []
+        for alert_id in alert_ids:
             alert = alert_manager.get_alert_by_id(alert_id)
             if alert:
-                analysis = ai_analyzer.analyze_alert(alert)
-                results.append(analysis)
-        except Exception as e:
-            results.append({"error": str(e), "alert_id": alert_id})
-    
-    return results
+                alerts.append(alert)
+        
+        if not alerts:
+            raise HTTPException(status_code=404, detail="未找到任何告警")
+        
+        analysis_result = ai_analyzer.analyze_batch_alerts(alerts)
+        return analysis_result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"批量分析失败: {str(e)}")
 
 @router.delete("/history/{analysis_id}")
 def delete_analysis_history(analysis_id: int):

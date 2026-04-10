@@ -117,3 +117,58 @@ def check_url(url: str = Query(..., description="URL to check")):
     """检查URL是否为恶意URL"""
     is_malicious = threat_intel_manager.check_url(url)
     return {"url": url, "is_malicious": is_malicious}
+
+@router.get("/malicious-hashes", response_model=List[str])
+def get_malicious_hashes():
+    """获取恶意文件哈希列表"""
+    hashes = list(threat_intel_manager.threat_intel_data['malicious_hashes'])
+    return hashes
+
+@router.get("/threat-campaigns", response_model=Dict)
+def get_threat_campaigns():
+    """获取威胁活动信息"""
+    campaigns = threat_intel_manager.get_threat_campaigns()
+    return campaigns
+
+@router.get("/vulnerabilities", response_model=Dict)
+def get_vulnerabilities():
+    """获取漏洞情报"""
+    vulnerabilities = threat_intel_manager.get_vulnerabilities()
+    return vulnerabilities
+
+@router.get("/vulnerabilities/{cve_id}", response_model=Dict)
+def get_vulnerability_by_cve(cve_id: str):
+    """根据CVE ID获取漏洞情报"""
+    vulnerability = threat_intel_manager.get_vulnerability_by_cve(cve_id)
+    if not vulnerability:
+        raise HTTPException(status_code=404, detail="Vulnerability not found")
+    return vulnerability
+
+@router.get("/check/hash/{hash_val}")
+def check_hash(hash_val: str):
+    """检查文件哈希是否为恶意哈希"""
+    is_malicious = threat_intel_manager.check_hash(hash_val)
+    return {"hash": hash_val, "is_malicious": is_malicious}
+
+@router.get("/threat-score/{indicator_type}/{indicator}")
+def get_threat_score(indicator_type: str, indicator: str):
+    """获取威胁指标的评分"""
+    if indicator_type not in ['ip', 'domain', 'url', 'hash']:
+        raise HTTPException(status_code=400, detail="Invalid indicator type")
+    score = threat_intel_manager.get_threat_score(indicator, indicator_type)
+    return {"indicator": indicator, "indicator_type": indicator_type, "threat_score": score}
+
+@router.post("/malicious-hashes")
+def add_malicious_hash(hash_val: str):
+    """添加恶意文件哈希"""
+    threat_intel_manager.add_malicious_hash(hash_val)
+    return {"message": f"Hash {hash_val} added to malicious hash list"}
+
+@router.delete("/malicious-hashes/{hash_val}")
+def delete_malicious_hash(hash_val: str):
+    """删除恶意文件哈希"""
+    hashes = threat_intel_manager.threat_intel_data.get('malicious_hashes', [])
+    if hash_val in hashes:
+        hashes.remove(hash_val)
+        return {"message": f"Hash {hash_val} 已删除"}
+    raise HTTPException(status_code=404, detail="哈希未找到")

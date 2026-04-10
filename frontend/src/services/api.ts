@@ -1,6 +1,9 @@
 import axios from 'axios';
 import type { AttackEvent, AlertRule, AlertHistory, DashboardOverview, TopTarget, SystemStatus, Configuration, User, Token } from '../types';
 
+// 创建请求缓存
+const requestCache = new Map();
+
 // Create axios instance
 const api = axios.create({
   baseURL: 'http://localhost:8000/api',
@@ -9,6 +12,66 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// 请求拦截器
+api.interceptors.request.use(
+  (config) => {
+    // 生成缓存键
+    const cacheKey = `${config.method}:${config.url}:${JSON.stringify(config.params)}`;
+    
+    // 检查是否有缓存
+    if (config.method === 'get' && requestCache.has(cacheKey)) {
+      const cachedResponse = requestCache.get(cacheKey);
+      // 如果缓存存在且未过期（5分钟）
+      if (cachedResponse && Date.now() - cachedResponse.timestamp < 5 * 60 * 1000) {
+        return Promise.resolve(cachedResponse.data);
+      }
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// 响应拦截器
+api.interceptors.response.use(
+  (response) => {
+    // 缓存 GET 请求的响应
+    if (response.config.method === 'get') {
+      const cacheKey = `${response.config.method}:${response.config.url}:${JSON.stringify(response.config.params)}`;
+      requestCache.set(cacheKey, {
+        data: response,
+        timestamp: Date.now(),
+      });
+    }
+    return response;
+  },
+  (error) => {
+    // 统一错误处理
+    if (error.response) {
+      switch (error.response.status) {
+        case 401:
+          // 未授权处理
+          break;
+        case 404:
+          console.error('API 端点不存在');
+          break;
+        case 500:
+          console.error('服务器内部错误');
+          break;
+        default:
+          console.error('请求失败:', error.response.data);
+      }
+    } else if (error.request) {
+      console.error('网络错误，无法连接到服务器');
+    } else {
+      console.error('请求配置错误:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Authentication endpoints
 export const authService = {

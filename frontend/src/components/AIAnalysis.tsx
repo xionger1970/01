@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Tabs, Button, Input, Select, Table, Tag, Statistic, Row, Col, Form, message, Space, Progress, Modal, Divider, Typography, Spin } from 'antd';
-import { RobotOutlined, ThunderboltOutlined, HistoryOutlined, DeleteOutlined, ReloadOutlined, BulbOutlined, BarChartOutlined, FileTextOutlined, CopyOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Card, Tabs, Button, Input, Select, Table, Tag, Statistic, Row, Col, Form, message, Space, Progress, Modal, Divider, Typography, Spin, Descriptions } from 'antd';
+import { RobotOutlined, ThunderboltOutlined, HistoryOutlined, DeleteOutlined, ReloadOutlined, BulbOutlined, BarChartOutlined, FileTextOutlined, CopyOutlined, DownloadOutlined, AlertOutlined, LockOutlined, TrademarkOutlined, EyeOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
@@ -112,7 +112,49 @@ const AIAnalysis: React.FC = () => {
                     <div>
                       {analysisResult.result && (<>
                         <div style={{ marginBottom: 16 }}><Tag color={severityColors[analysisResult.result.severity || 'medium']}>{severityLabels[analysisResult.result.severity || 'medium']}</Tag><Tag color={analysisResult.result.threat_type === 'apt' ? 'red' : 'blue'}>{threatTypeLabels[analysisResult.result.threat_type as string] || analysisResult.result.threat_type}</Tag><Progress percent={Math.round((analysisResult.result.confidence || 0) * 100)} style={{ width: 150, marginLeft: 16 }} size="small" /></div>
+                        
+                        {/* 威胁评分 */}
+                        {analysisResult.threat_score !== undefined && (
+                          <div style={{ marginBottom: 16 }}>
+                            <strong>威胁评分:</strong>
+                            <Progress percent={Math.round(analysisResult.threat_score * 100)} 
+                              status={analysisResult.threat_score > 0.8 ? 'exception' : analysisResult.threat_score > 0.5 ? 'warning' : 'normal'}
+                              style={{ marginTop: 4 }}
+                            />
+                          </div>
+                        )}
+                        
                         {analysisResult.result.description && <div style={{ marginBottom: 12 }}><strong>描述:</strong><p style={{ marginTop: 4 }}>{analysisResult.result.description}</p></div>}
+                        
+                        {/* 攻击模式 */}
+                        {analysisResult.result.attack_patterns && analysisResult.result.attack_patterns.length > 0 && (
+                          <div style={{ marginBottom: 12 }}>
+                            <strong>攻击模式:</strong>
+                            <div style={{ marginTop: 4 }}>
+                              {analysisResult.result.attack_patterns.map((pattern: string, i: number) => (
+                                <Tag key={i} color="purple" style={{ marginBottom: 4 }}>
+                                  {pattern === 'lateral_movement' ? '横向移动' : 
+                                   pattern === 'privilege_escalation' ? '权限提升' : 
+                                   pattern === 'data_exfiltration' ? '数据泄露' : pattern}
+                                </Tag>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 预测性分析 */}
+                        {analysisResult.result.predictive_analysis && (
+                          <div style={{ marginBottom: 12 }}>
+                            <strong>预测分析:</strong>
+                            <Descriptions size="small" style={{ marginTop: 4 }} column={2}>
+                              <Descriptions.Item label="可能结果">{analysisResult.result.predictive_analysis.outcome}</Descriptions.Item>
+                              <Descriptions.Item label="影响程度">{analysisResult.result.predictive_analysis.impact}</Descriptions.Item>
+                              <Descriptions.Item label="可能性">{Math.round(analysisResult.result.predictive_analysis.probability * 100)}%</Descriptions.Item>
+                              <Descriptions.Item label="建议处理时间">{analysisResult.result.predictive_analysis.mitigation_time}</Descriptions.Item>
+                            </Descriptions>
+                          </div>
+                        )}
+                        
                         {analysisResult.result.recommendations?.length > 0 && <div style={{ marginBottom: 12 }}><strong>建议:</strong><ul style={{ marginTop: 4, paddingLeft: 20 }}>{analysisResult.result.recommendations.map((rec: string, i: number) => <li key={i}>{rec}</li>)}</ul></div>}
                         {analysisResult.result.indicators?.length > 0 && <div><strong>检测指标:</strong><div style={{ marginTop: 4 }}>{analysisResult.result.indicators.map((ind: string, i: number) => <Tag key={i} color="orange" style={{ marginBottom: 4 }}>{ind}</Tag>)}</div></div>}
                       </>)}

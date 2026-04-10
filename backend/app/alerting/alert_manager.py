@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 import threading
+import requests
 from collections import defaultdict, deque
 from app.threat_intel.intel_manager import threat_intel_manager
 from app.detectors.advanced_detector import advanced_detector
@@ -42,7 +43,38 @@ class AlertManager:
             'email': False,
             'sms': False,
             'webhook': False,
-            'syslog': False
+            'syslog': False,
+            'slack': False,
+            'telegram': False,
+            'dingtalk': False
+        }
+        
+        # 通知渠道配置
+        self.notification_configs = {
+            'email': {
+                'smtp_server': 'smtp.example.com',
+                'smtp_port': 587,
+                'username': 'alerts@example.com',
+                'password': 'password',
+                'from_email': 'alerts@example.com',
+                'to_emails': ['admin@example.com']
+            },
+            'webhook': {
+                'url': 'https://example.com/webhook',
+                'secret': 'secret_key'
+            },
+            'slack': {
+                'webhook_url': 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK',
+                'channel': '#security-alerts'
+            },
+            'telegram': {
+                'bot_token': 'YOUR_TELEGRAM_BOT_TOKEN',
+                'chat_id': 'YOUR_CHAT_ID'
+            },
+            'dingtalk': {
+                'webhook_url': 'https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN',
+                'secret': 'YOUR_SECRET'
+            }
         }
         
         # 告警分组
@@ -221,9 +253,154 @@ class AlertManager:
     
     def _send_notification(self, alert: Dict):
         """发送告警通知"""
-        # 这里可以添加通知逻辑
-        # 例如：邮件、短信、webhook等
+        # 构建通知消息
+        message = self._build_notification_message(alert)
+        
+        # 发送到各个启用的渠道
+        if self.notification_channels.get('email'):
+            self._send_email_notification(alert, message)
+        
+        if self.notification_channels.get('webhook'):
+            self._send_webhook_notification(alert, message)
+        
+        if self.notification_channels.get('slack'):
+            self._send_slack_notification(alert, message)
+        
+        if self.notification_channels.get('telegram'):
+            self._send_telegram_notification(alert, message)
+        
+        if self.notification_channels.get('dingtalk'):
+            self._send_dingtalk_notification(alert, message)
+        
         print(f"Notification: {alert['severity']} - {alert['message']}")
+    
+    def _build_notification_message(self, alert: Dict) -> str:
+        """构建通知消息"""
+        severity_emoji = {
+            'critical': '🚨',
+            'high': '⚠️',
+            'medium': '🔔',
+            'low': 'ℹ️',
+            'info': '💡'
+        }
+        
+        emoji = severity_emoji.get(alert['severity'], 'ℹ️')
+        
+        message = f"{emoji} *{alert['severity'].upper()} Alert*: {alert['message']}\n"
+        message += f"ID: {alert['id']}\n"
+        message += f"Created: {alert['created_at'].strftime('%Y-%m-%d %H:%M:%S')}\n"
+        
+        if alert['details']:
+            message += "Details:\n"
+            for key, value in alert['details'].items():
+                message += f"  - {key}: {value}\n"
+        
+        return message
+    
+    def _send_email_notification(self, alert: Dict, message: str):
+        """发送邮件通知"""
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            
+            config = self.notification_configs['email']
+            
+            msg = MIMEMultipart()
+            msg['From'] = config['from_email']
+            msg['To'] = ', '.join(config['to_emails'])
+            msg['Subject'] = f"[{alert['severity'].upper()}] Security Alert: {alert['message']}"
+            
+            msg.attach(MIMEText(message, 'plain'))
+            
+            with smtplib.SMTP(config['smtp_server'], config['smtp_port']) as server:
+                server.starttls()
+                server.login(config['username'], config['password'])
+                server.send_message(msg)
+            
+            print("Email notification sent")
+        except Exception as e:
+            print(f"Failed to send email notification: {e}")
+    
+    def _send_webhook_notification(self, alert: Dict, message: str):
+        """发送Webhook通知"""
+        try:
+            config = self.notification_configs['webhook']
+            
+            payload = {
+                'alert': alert,
+                'message': message,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'X-Webhook-Secret': config['secret']
+            }
+            
+            response = requests.post(config['url'], json=payload, headers=headers)
+            response.raise_for_status()
+            
+            print("Webhook notification sent")
+        except Exception as e:
+            print(f"Failed to send webhook notification: {e}")
+    
+    def _send_slack_notification(self, alert: Dict, message: str):
+        """发送Slack通知"""
+        try:
+            config = self.notification_configs['slack']
+            
+            payload = {
+                'channel': config['channel'],
+                'text': message,
+                'username': 'Security Alert Bot',
+                'icon_emoji': ':warning:'
+            }
+            
+            response = requests.post(config['webhook_url'], json=payload)
+            response.raise_for_status()
+            
+            print("Slack notification sent")
+        except Exception as e:
+            print(f"Failed to send Slack notification: {e}")
+    
+    def _send_telegram_notification(self, alert: Dict, message: str):
+        """发送Telegram通知"""
+        try:
+            config = self.notification_configs['telegram']
+            
+            url = f"https://api.telegram.org/bot{config['bot_token']}/sendMessage"
+            payload = {
+                'chat_id': config['chat_id'],
+                'text': message,
+                'parse_mode': 'Markdown'
+            }
+            
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            
+            print("Telegram notification sent")
+        except Exception as e:
+            print(f"Failed to send Telegram notification: {e}")
+    
+    def _send_dingtalk_notification(self, alert: Dict, message: str):
+        """发送DingTalk通知"""
+        try:
+            config = self.notification_configs['dingtalk']
+            
+            payload = {
+                'msgtype': 'text',
+                'text': {
+                    'content': message
+                }
+            }
+            
+            response = requests.post(config['webhook_url'], json=payload)
+            response.raise_for_status()
+            
+            print("DingTalk notification sent")
+        except Exception as e:
+            print(f"Failed to send DingTalk notification: {e}")
     
     def get_alert_rules(self) -> List[Dict]:
         """获取告警规则"""

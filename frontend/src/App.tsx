@@ -1,22 +1,24 @@
-import React from 'react';
-import { Provider } from 'react-redux';
-import { ConfigProvider, Layout, Menu, Space } from 'antd';
+import React, { lazy, Suspense } from 'react';
+import { ConfigProvider, Layout, Menu, Space, Spin, Button } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import 'antd/dist/reset.css';
 import './index.css';
-import { DashboardOutlined, AlertOutlined, SettingOutlined, ApiOutlined, AreaChartOutlined, TeamOutlined, HistoryOutlined, BarChartOutlined, LinkOutlined, RobotOutlined, DatabaseOutlined, SafetyOutlined } from '@ant-design/icons';
+import { DashboardOutlined, AlertOutlined, SettingOutlined, ApiOutlined, AreaChartOutlined, TeamOutlined, HistoryOutlined, BarChartOutlined, LinkOutlined, RobotOutlined, DatabaseOutlined, SafetyOutlined, LogoutOutlined } from '@ant-design/icons';
+import authService from './services/authService';
 import store from './store';
-import Dashboard from './components/Dashboard';
-import AttackMonitor from './components/AttackMonitor';
-import Settings from './components/Settings';
-import ThreatIntel from './components/ThreatIntel';
-import AnomalyDetection from './components/AnomalyDetection';
-import AlertManagement from './components/AlertManagement';
-import AttackTracking from './components/AttackTracking';
-import SecuritySituation from './components/SecuritySituation';
-import Orchestration from './components/Orchestration';
-import AIAnalysis from './components/AIAnalysis';
-import DataSourceManagement from './components/DataSourceManagement';
+
+// 懒加载组件
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const AttackMonitor = lazy(() => import('./components/AttackMonitor'));
+const Settings = lazy(() => import('./components/Settings'));
+const ThreatIntel = lazy(() => import('./components/ThreatIntel'));
+const AnomalyDetection = lazy(() => import('./components/AnomalyDetection'));
+const AlertManagement = lazy(() => import('./components/AlertManagement'));
+const AttackTracking = lazy(() => import('./components/AttackTracking'));
+const SecuritySituation = lazy(() => import('./components/SecuritySituation'));
+const Orchestration = lazy(() => import('./components/Orchestration'));
+const AIAnalysis = lazy(() => import('./components/AIAnalysis'));
+const DataSourceManagement = lazy(() => import('./components/DataSourceManagement'));
 
 const { Header, Content, Sider } = Layout;
 
@@ -49,7 +51,13 @@ const App: React.FC = () => {
       'ai-analysis': <AIAnalysis />,
       'settings': <Settings />,
     };
-    return <div style={{ width: '100%' }} className="animate-fade-in">{map[selectedKey] || <Dashboard />}</div>;
+    return (
+      <div style={{ width: '100%' }} className="animate-fade-in">
+        <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}><Spin size="large" /></div>}>
+          {map[selectedKey] || <Dashboard />}
+        </Suspense>
+      </div>
+    );
   };
 
   const menuItems = [
@@ -70,10 +78,9 @@ const App: React.FC = () => {
   ];
 
   return (
-    <Provider store={store}>
-      <ConfigProvider locale={zhCN} theme={theme}>
-        <Layout style={{ minHeight: '100vh' }}>
-          <Header style={{
+    <ConfigProvider locale={zhCN} theme={theme}>
+      <Layout style={{ minHeight: '100vh' }}>
+        <Header style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 24px', height: 56, position: 'sticky', top: 0, zIndex: 100,
             background: 'linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)',
@@ -85,46 +92,59 @@ const App: React.FC = () => {
                 <div style={{ color: '#b8bbbf', fontSize: 11, lineHeight: '14px' }}>Cyber Attack Situational Awareness</div>
               </div>
             </div>
-          </Header>
-          <Layout>
-            <Sider
-              width={200}
-              collapsible
-              collapsed={collapsed}
-              onCollapse={setCollapsed}
-              style={{
-                overflow: 'auto',
-                position: 'sticky',
-                top: 56,
-                height: 'calc(100vh - 56px)',
-              }}
-              theme="dark"
-            >
-              <Menu
-                mode="inline"
-                selectedKeys={[selectedKey]}
-                style={{ 
-                  height: '100%', 
-                  borderRight: 0, 
-                  background: 'transparent', 
-                  paddingTop: 8,
-                  paddingBottom: 16
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ color: '#b8bbbf', fontSize: 14 }}>
+                {authService.getStoredUser()?.username || '未登录'}
+              </div>
+              <Button 
+                icon={<LogoutOutlined />} 
+                onClick={() => {
+                  authService.logout();
+                  window.location.href = '/login';
                 }}
-                onSelect={({ key }) => setSelectedKey(key)}
-                items={menuItems}
-              />
-            </Sider>
-            <Content style={{
+                style={{ color: '#b8bbbf', borderColor: '#333' }}
+              >
+                登出
+              </Button>
+            </div>
+          </Header>
+        <Layout>
+          <Sider
+            width={200}
+            collapsible
+            collapsed={collapsed}
+            onCollapse={setCollapsed}
+            style={{
               overflow: 'auto',
-              minHeight: 'calc(100vh - 56px)',
-              background: '#1a1a2e',
-            }}>
-              {renderContent()}
-            </Content>
-          </Layout>
+              position: 'sticky',
+              top: 56,
+              height: 'calc(100vh - 56px)',
+            }}
+            theme="dark"
+          >
+            <Menu
+              mode="inline"
+              selectedKeys={[selectedKey]}
+              style={{ 
+                height: '100%', 
+                borderRight: 0, 
+                background: 'transparent', 
+                paddingTop: 8,
+                paddingBottom: 16
+              }}
+              onSelect={({ key }) => setSelectedKey(key)}
+              items={menuItems}
+            />
+          </Sider>
+          <Content style={{
+            overflow: 'auto',
+            minHeight: 'calc(100vh - 56px)',
+            background: '#1a1a2e',
+          }}>
+            {renderContent()}
+          </Content>
         </Layout>
       </ConfigProvider>
-    </Provider>
   );
 };
 

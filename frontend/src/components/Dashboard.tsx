@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, Row, Col, Statistic, Progress, Typography, Alert, Skeleton, Button, Modal, Checkbox, Select, Space, Divider, Tag, Badge, Tooltip } from 'antd';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
 import { SettingOutlined, EyeOutlined, EyeInvisibleOutlined, ReloadOutlined, BellOutlined, StopOutlined, ThunderboltOutlined, DashboardOutlined, SafetyCertificateOutlined, AlertOutlined, SearchOutlined, AimOutlined, SecurityScanOutlined, CheckCircleOutlined, WarningOutlined, ApiOutlined, DatabaseOutlined, GlobalOutlined, TeamOutlined } from '@ant-design/icons';
 import { fetchOverview, fetchTopTargets, fetchSystemStatus, toggleWidgetVisibility, updateLayout, resetDashboard } from '../store/slices/dashboardSlice';
@@ -122,6 +122,20 @@ const Dashboard: React.FC = () => {
   const scoreColor = securityScore >= 80 ? '#3fb950' : securityScore >= 60 ? '#d29922' : '#f85149';
   const scoreLabel = securityScore >= 80 ? '良好' : securityScore >= 60 ? '一般' : '危险';
 
+  const attackTypeData = overview ? [
+    { name: 'SQL注入', value: overview.attack_type_distribution?.sql_injection || 0, color: '#f85149' },
+    { name: 'XSS', value: overview.attack_type_distribution?.xss || 0, color: '#d29922' },
+    { name: 'CSRF', value: overview.attack_type_distribution?.csrf || 0, color: '#58a6ff' },
+    { name: '命令注入', value: overview.attack_type_distribution?.command_injection || 0, color: '#3fb950' },
+    { name: 'DoS', value: overview.attack_type_distribution?.dos || 0, color: '#a371f7' },
+  ] : [];
+
+  const mitreRadarData = MITRE_TACTICS.map(tactic => ({
+    subject: tactic.name,
+    A: tactic.detected.reduce((sum, count) => sum + count, 0),
+    fullMark: 20,
+  }));
+
   const renderWidgetContent = (widget: DashboardWidget) => {
     switch (widget.type) {
       case 'summary':
@@ -171,6 +185,35 @@ const Dashboard: React.FC = () => {
               </Pie>
               <RechartsTooltip contentStyle={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8 }} />
             </PieChart>
+          </ResponsiveContainer>
+        );
+      case 'attack-types':
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={attackTypeData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
+              <XAxis dataKey="name" stroke="#8b949e" />
+              <YAxis stroke="#8b949e" />
+              <RechartsTooltip contentStyle={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8 }} />
+              <Bar dataKey="value" name="攻击次数">
+                {attackTypeData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      case 'mitre-radar':
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <RadarChart outerRadius={90} data={mitreRadarData}>
+              <PolarGrid stroke="#30363d" />
+              <PolarAngleAxis dataKey="subject" stroke="#8b949e" />
+              <PolarRadiusAxis angle={30} domain={[0, 20]} stroke="#8b949e" />
+              <Radar name="检测次数" dataKey="A" stroke="#58a6ff" fill="#58a6ff" fillOpacity={0.3} />
+              <Legend />
+              <RechartsTooltip contentStyle={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8 }} />
+            </RadarChart>
           </ResponsiveContainer>
         );
       case 'targets':

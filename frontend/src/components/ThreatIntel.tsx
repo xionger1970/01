@@ -11,7 +11,10 @@ interface ThreatIntelStats {
   malicious_ips_count: number;
   malicious_domains_count: number;
   malicious_urls_count: number;
+  malicious_hashes_count: number;
   apt_groups_count: number;
+  threat_campaigns_count: number;
+  vulnerabilities_count: number;
   threat_indicators_count: number;
   last_updated: string;
 }
@@ -49,7 +52,10 @@ const ThreatIntel: React.FC = () => {
   const [stats, setStats] = useState<ThreatIntelStats | null>(null);
   const [maliciousIPs, setMaliciousIPs] = useState<any[]>([]);
   const [maliciousDomains, setMaliciousDomains] = useState<any[]>([]);
+  const [maliciousHashes, setMaliciousHashes] = useState<any[]>([]);
   const [aptGroups, setAptGroups] = useState<{ [key: string]: APTGroup }>({});
+  const [threatCampaigns, setThreatCampaigns] = useState<{ [key: string]: any }>({});
+  const [vulnerabilities, setVulnerabilities] = useState<{ [key: string]: any }>({});
   const [threatIndicators, setThreatIndicators] = useState<ThreatIndicator[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,27 +63,33 @@ const ThreatIntel: React.FC = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedIndicator, setSelectedIndicator] = useState<ThreatIndicator | null>(null);
   const [form] = Form.useForm();
-  const [actionType, setActionType] = useState<'ip' | 'domain' | 'url'>('ip');
+  const [actionType, setActionType] = useState<'ip' | 'domain' | 'url' | 'hash'>('ip');
   const [searchText, setSearchText] = useState('');
   const [batchModalVisible, setBatchModalVisible] = useState(false);
   const [batchText, setBatchText] = useState('');
-  const [batchType, setBatchType] = useState<'ip' | 'domain' | 'url'>('ip');
+  const [batchType, setBatchType] = useState<'ip' | 'domain' | 'url' | 'hash'>('ip');
 
   const fetchThreatIntelData = useCallback(async (showLoading = false) => {
     if (showLoading) setInitialLoading(true);
     setError(null);
     try {
-      const [statsRes, ipsRes, domainsRes, aptRes, indicatorsRes] = await Promise.all([
+      const [statsRes, ipsRes, domainsRes, hashesRes, aptRes, campaignsRes, vulnsRes, indicatorsRes] = await Promise.all([
         axios.get('/api/threat-intel/stats'),
         axios.get('/api/threat-intel/malicious-ips'),
         axios.get('/api/threat-intel/malicious-domains'),
+        axios.get('/api/threat-intel/malicious-hashes'),
         axios.get('/api/threat-intel/apt-groups'),
+        axios.get('/api/threat-intel/threat-campaigns'),
+        axios.get('/api/threat-intel/vulnerabilities'),
         axios.get('/api/threat-intel/threat-indicators')
       ]);
       setStats(statsRes.data);
       setMaliciousIPs(Array.isArray(ipsRes.data) ? ipsRes.data : []);
       setMaliciousDomains(Array.isArray(domainsRes.data) ? domainsRes.data : []);
+      setMaliciousHashes(Array.isArray(hashesRes.data) ? hashesRes.data : []);
       setAptGroups(typeof aptRes.data === 'object' && aptRes.data !== null ? aptRes.data : {});
+      setThreatCampaigns(typeof campaignsRes.data === 'object' && campaignsRes.data !== null ? campaignsRes.data : {});
+      setVulnerabilities(typeof vulnsRes.data === 'object' && vulnsRes.data !== null ? vulnsRes.data : {});
       setThreatIndicators(Array.isArray(indicatorsRes.data) ? indicatorsRes.data : []);
     } catch (err) {
       setError('获取威胁情报数据失败');
@@ -85,7 +97,10 @@ const ThreatIntel: React.FC = () => {
       setStats(null);
       setMaliciousIPs([]);
       setMaliciousDomains([]);
+      setMaliciousHashes([]);
       setAptGroups({});
+      setThreatCampaigns({});
+      setVulnerabilities({});
       setThreatIndicators([]);
     } finally {
       if (showLoading) setInitialLoading(false);
@@ -109,6 +124,9 @@ const ThreatIntel: React.FC = () => {
           break;
         case 'url':
           await axios.post('/api/threat-intel/malicious-urls', null, { params: { url: values.item } });
+          break;
+        case 'hash':
+          await axios.post('/api/threat-intel/malicious-hashes', null, { params: { hash_val: values.item } });
           break;
       }
       message.success('添加成功');
@@ -144,6 +162,9 @@ const ThreatIntel: React.FC = () => {
             break;
           case 'url':
             await axios.post('/api/threat-intel/malicious-urls', null, { params: { url: item } });
+            break;
+          case 'hash':
+            await axios.post('/api/threat-intel/malicious-hashes', null, { params: { hash_val: item } });
             break;
         }
         successCount++;
@@ -187,12 +208,25 @@ const ThreatIntel: React.FC = () => {
     }
   };
 
+  const handleDeleteHash = async (hash: string) => {
+    try {
+      await axios.delete(`/api/threat-intel/malicious-hashes/${encodeURIComponent(hash)}`);
+      message.success('删除成功');
+      fetchThreatIntelData();
+    } catch (err) {
+      message.error('删除失败');
+    }
+  };
+
   const handleExport = () => {
     const data = {
       malicious_ips: maliciousIPs,
       malicious_domains: maliciousDomains,
+      malicious_hashes: maliciousHashes,
       threat_indicators: threatIndicators,
       apt_groups: aptGroups,
+      threat_campaigns: threatCampaigns,
+      vulnerabilities: vulnerabilities,
       exported_at: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -224,6 +258,18 @@ const ThreatIntel: React.FC = () => {
     { title: '类型', key: 'type', width: 100, render: () => <Tag color="orange">恶意域名</Tag> },
     { title: '操作', key: 'action', width: 80, render: (_: any, record: any) => (
       <Popconfirm title="确定要删除该域名吗？" onConfirm={() => handleDeleteDomain(record.domain)} okText="确定" cancelText="取消">
+        <Button type="link" danger icon={<DeleteOutlined />} size="small">删除</Button>
+      </Popconfirm>
+    )}
+  ];
+
+  const hashColumns = [
+    { title: '序号', key: 'index', width: 60, render: (_: any, __: any, index: number) => index + 1 },
+    { title: '文件哈希', dataIndex: 'hash', key: 'hash', render: (hash: string) => <span style={{ fontFamily: 'monospace', color: '#1890ff', fontWeight: 500, fontSize: 12 }}>{hash}</span> },
+    { title: '威胁等级', key: 'severity', width: 120, render: () => <Tag color="red">高危</Tag> },
+    { title: '类型', key: 'type', width: 100, render: () => <Tag color="blue">恶意哈希</Tag> },
+    { title: '操作', key: 'action', width: 80, render: (_: any, record: any) => (
+      <Popconfirm title="确定要删除该哈希吗？" onConfirm={() => handleDeleteHash(record.hash)} okText="确定" cancelText="取消">
         <Button type="link" danger icon={<DeleteOutlined />} size="small">删除</Button>
       </Popconfirm>
     )}
@@ -262,6 +308,14 @@ const ThreatIntel: React.FC = () => {
     key: index, domain: typeof domain === 'string' ? domain : domain.domain || '', status: 'malicious'
   }));
 
+  const filteredHashes = maliciousHashes.filter((hash: any) => {
+    if (!searchText) return true;
+    const hashStr = typeof hash === 'string' ? hash : hash.hash || '';
+    return hashStr.toLowerCase().includes(searchText.toLowerCase());
+  }).map((hash: any, index: number) => ({
+    key: index, hash: typeof hash === 'string' ? hash : hash.hash || '', status: 'malicious'
+  }));
+
   return (
     <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -283,10 +337,12 @@ const ThreatIntel: React.FC = () => {
 
       <Spin spinning={initialLoading} description="加载中...">
         <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={6}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #ff4d4f, #ff7875)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'恶意IP'}</span>} value={stats?.malicious_ips_count || 0} prefix={<ApiOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
-          <Col span={6}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #fa8c16, #ffc53d)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'恶意域名'}</span>} value={stats?.malicious_domains_count || 0} prefix={<GlobalOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
-          <Col span={6}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #1890ff, #69c0ff)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'APT组织'}</span>} value={stats?.apt_groups_count || 0} prefix={<SafetyCertificateOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
-          <Col span={6}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #52c41a, #95de64)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'威胁指标'}</span>} value={stats?.threat_indicators_count || 0} prefix={<AlertOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
+          <Col span={4}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #ff4d4f, #ff7875)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'恶意IP'}</span>} value={stats?.malicious_ips_count || 0} prefix={<ApiOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
+          <Col span={4}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #fa8c16, #ffc53d)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'恶意域名'}</span>} value={stats?.malicious_domains_count || 0} prefix={<GlobalOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
+          <Col span={4}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #1890ff, #69c0ff)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'恶意哈希'}</span>} value={stats?.malicious_hashes_count || 0} prefix={<UploadOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
+          <Col span={4}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #722ed1, #b37feb)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'APT组织'}</span>} value={stats?.apt_groups_count || 0} prefix={<SafetyCertificateOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
+          <Col span={4}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #eb2f96, #f56a00)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'威胁活动'}</span>} value={stats?.threat_campaigns_count || 0} prefix={<AlertOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
+          <Col span={4}><Card variant="borderless" style={{ background: 'linear-gradient(135deg, #52c41a, #95de64)', borderRadius: 12 }}><Statistic title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>{'漏洞情报'}</span>} value={stats?.vulnerabilities_count || 0} prefix={<SafetyCertificateOutlined />} valueStyle={{ color: '#fff', fontWeight: 700 }} /></Card></Col>
         </Row>
 
         <Card variant="borderless" style={{ borderRadius: 12 }}>
@@ -296,6 +352,9 @@ const ThreatIntel: React.FC = () => {
             )},
             { key: 'domains', label: <span><GlobalOutlined /> {'恶意域名'}</span>, children: (
               <Table columns={domainColumns} dataSource={filteredDomains} pagination={{ pageSize: 20, showTotal: (total) => `共 ${total} 条` }} size="middle" />
+            )},
+            { key: 'hashes', label: <span><UploadOutlined /> {'恶意哈希'}</span>, children: (
+              <Table columns={hashColumns} dataSource={filteredHashes} pagination={{ pageSize: 20, showTotal: (total) => `共 ${total} 条` }} size="middle" />
             )},
             { key: 'apt', label: <span><SafetyCertificateOutlined /> {'APT组织'}</span>, children: (
               <Row gutter={16}>
@@ -310,6 +369,76 @@ const ThreatIntel: React.FC = () => {
                       <div>
                         <strong style={{ fontSize: 13 }}>{'威胁指标：'}</strong>
                         <div style={{ marginTop: 4 }}>{group.indicators.map((indicator, index) => <Tag key={index} color="orange" style={{ margin: 2 }}>{indicator}</Tag>)}</div>
+                      </div>
+                      {group.activity && (
+                        <div style={{ marginTop: 12 }}>
+                          <strong style={{ fontSize: 13 }}>{'活动时间：'}</strong>
+                          <div style={{ marginTop: 4 }}>{group.activity}</div>
+                        </div>
+                      )}
+                      {group.targets && group.targets.length > 0 && (
+                        <div style={{ marginTop: 12 }}>
+                          <strong style={{ fontSize: 13 }}>{'攻击目标：'}</strong>
+                          <div style={{ marginTop: 4 }}>{group.targets.map((target, index) => <Tag key={index} color="green" style={{ margin: 2 }}>{target}</Tag>)}</div>
+                        </div>
+                      )}
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            )},
+            { key: 'campaigns', label: <span><AlertOutlined /> {'威胁活动'}</span>, children: (
+              <Row gutter={16}>
+                {Object.entries(threatCampaigns).map(([key, campaign]) => (
+                  <Col span={8} key={key} style={{ marginBottom: 16 }}>
+                    <Card title={<span style={{ fontWeight: 600 }}>{campaign.name}</span>} extra={<Tag color="red">{campaign.status || 'Active'}</Tag>} variant="borderless" style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                      <p style={{ color: '#666', marginBottom: 12 }}>{campaign.description}</p>
+                      <div style={{ marginBottom: 8 }}>
+                        <strong style={{ fontSize: 13 }}>{'开始日期：'}</strong>
+                        <div style={{ marginTop: 4 }}>{campaign.start_date}</div>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <strong style={{ fontSize: 13 }}>{'APT组织：'}</strong>
+                        <div style={{ marginTop: 4 }}>{campaign.apt_group}</div>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <strong style={{ fontSize: 13 }}>{'攻击目标：'}</strong>
+                        <div style={{ marginTop: 4 }}>{campaign.targets?.map((target: string, index: number) => <Tag key={index} color="blue" style={{ margin: 2 }}>{target}</Tag>)}</div>
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: 13 }}>{'战术手法：'}</strong>
+                        <div style={{ marginTop: 4 }}>{campaign.tactics?.map((tactic: string, index: number) => <Tag key={index} color="orange" style={{ margin: 2 }}>{tactic}</Tag>)}</div>
+                      </div>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            )},
+            { key: 'vulnerabilities', label: <span><SafetyCertificateOutlined /> {'漏洞情报'}</span>, children: (
+              <Row gutter={16}>
+                {Object.entries(vulnerabilities).map(([key, vuln]) => (
+                  <Col span={8} key={key} style={{ marginBottom: 16 }}>
+                    <Card title={<span style={{ fontWeight: 600 }}>{vuln.name}</span>} extra={<Tag color={vuln.severity === 'Critical' ? 'red' : vuln.severity === 'High' ? 'orange' : 'yellow'}>{vuln.severity}</Tag>} variant="borderless" style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                      <p style={{ color: '#666', marginBottom: 12 }}>{vuln.description}</p>
+                      <div style={{ marginBottom: 8 }}>
+                        <strong style={{ fontSize: 13 }}>{'CVE ID：'}</strong>
+                        <div style={{ marginTop: 4, fontFamily: 'monospace' }}>{vuln.cve_id}</div>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <strong style={{ fontSize: 13 }}>{'CVSS评分：'}</strong>
+                        <div style={{ marginTop: 4 }}>{vuln.cvss_score}</div>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <strong style={{ fontSize: 13 }}>{'发布日期：'}</strong>
+                        <div style={{ marginTop: 4 }}>{vuln.published_date}</div>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <strong style={{ fontSize: 13 }}>{'受影响软件：'}</strong>
+                        <div style={{ marginTop: 4 }}>{vuln.affected_software?.map((software: string, index: number) => <Tag key={index} color="blue" style={{ margin: 2 }}>{software}</Tag>)}</div>
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: 13 }}>{'是否有漏洞利用：'}</strong>
+                        <div style={{ marginTop: 4 }}>{vuln.exploit_available ? <Tag color="red">是</Tag> : <Tag color="green">否</Tag>}</div>
                       </div>
                     </Card>
                   </Col>
@@ -336,10 +465,11 @@ const ThreatIntel: React.FC = () => {
               <Option value="ip">IP地址</Option>
               <Option value="domain">域名</Option>
               <Option value="url">URL</Option>
+              <Option value="hash">文件哈希</Option>
             </Select>
           </Form.Item>
-          <Form.Item name="item" label={actionType === 'ip' ? 'IP地址' : actionType === 'domain' ? '域名' : 'URL'} rules={[{ required: true, message: `请输入${actionType === 'ip' ? 'IP地址' : actionType === 'domain' ? '域名' : 'URL'}` }]}>
-            <Input placeholder={`请输入${actionType === 'ip' ? 'IP地址' : actionType === 'domain' ? '域名' : 'URL'}`} />
+          <Form.Item name="item" label={actionType === 'ip' ? 'IP地址' : actionType === 'domain' ? '域名' : actionType === 'url' ? 'URL' : '文件哈希'} rules={[{ required: true, message: `请输入${actionType === 'ip' ? 'IP地址' : actionType === 'domain' ? '域名' : actionType === 'url' ? 'URL' : '文件哈希'}` }]}>
+            <Input placeholder={`请输入${actionType === 'ip' ? 'IP地址' : actionType === 'domain' ? '域名' : actionType === 'url' ? 'URL' : '文件哈希（MD5/SHA1/SHA256）'}`} />
           </Form.Item>
           <Form.Item name="description" label="描述">
             <TextArea rows={3} placeholder="请输入描述信息" />
@@ -358,10 +488,11 @@ const ThreatIntel: React.FC = () => {
               <Option value="ip">IP地址</Option>
               <Option value="domain">域名</Option>
               <Option value="url">URL</Option>
+              <Option value="hash">文件哈希</Option>
             </Select>
           </Form.Item>
-          <Form.Item label={`请输入${batchType === 'ip' ? 'IP地址' : batchType === 'domain' ? '域名' : 'URL'}列表（每行一个）`}>
-            <TextArea rows={10} value={batchText} onChange={(e) => setBatchText(e.target.value)} placeholder={`请输入${batchType === 'ip' ? 'IP地址' : batchType === 'domain' ? '域名' : 'URL'}，每行一个\n例如：\n192.168.1.1\n10.0.0.1\n172.16.0.1`} />
+          <Form.Item label={`请输入${batchType === 'ip' ? 'IP地址' : batchType === 'domain' ? '域名' : batchType === 'url' ? 'URL' : '文件哈希'}列表（每行一个）`}>
+            <TextArea rows={10} value={batchText} onChange={(e) => setBatchText(e.target.value)} placeholder={`请输入${batchType === 'ip' ? 'IP地址' : batchType === 'domain' ? '域名' : batchType === 'url' ? 'URL' : '文件哈希（MD5/SHA1/SHA256）'}，每行一个\n例如：\n{batchType === 'ip' ? '192.168.1.1\n10.0.0.1\n172.16.0.1' : batchType === 'domain' ? 'malicious.com\nattackers.net\nphishing.org' : batchType === 'url' ? 'http://malicious.com/exploit\nhttps://phishing.org/login' : '5f4dcc3b5aa765d61d8327deb882cf99\ne10adc3949ba59abbe56e057f20f883e\n25f9e794323b453885f5181f1b624d0b'}`} />
           </Form.Item>
           <div style={{ color: '#999', fontSize: 12 }}>
             已输入 {batchText.split('\n').filter(item => item.trim().length > 0).length} 条数据

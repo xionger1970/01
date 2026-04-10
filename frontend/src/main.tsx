@@ -1,10 +1,37 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import App from './App';
+import Login from './components/Login';
+import store, { persistor } from './store';
+import authService from './services/authService';
 import './index.css';
+
+// 初始化身份验证
+authService.initializeAuth();
+
+// 受保护的路由组件
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  if (!authService.isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<ProtectedRoute><App /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </PersistGate>
+    </Provider>
   </React.StrictMode>,
 );

@@ -7,3 +7,4 @@ python-dotenv
 scapy
 passlib[bcrypt]
 pyjwt
+redis

@@ -1,11 +1,18 @@
 from fastapi import APIRouter
 from typing import Dict, List
 from datetime import datetime, timedelta
+from app.core.cache import cache_manager
 
 router = APIRouter()
 
 @router.get("/overview")
 def get_dashboard_overview():
+    # 尝试从缓存获取数据
+    cache_key = "dashboard:overview"
+    cached_data = cache_manager.get(cache_key)
+    if cached_data:
+        return cached_data
+    
     # Mock data for demonstration
     overview = {
         "total_attacks": 156,
@@ -38,12 +45,30 @@ def get_dashboard_overview():
             {"timestamp": (datetime.now() - timedelta(days=2)).isoformat(), "count": 30},
             {"timestamp": (datetime.now() - timedelta(days=1)).isoformat(), "count": 28},
             {"timestamp": datetime.now().isoformat(), "count": 21}
-        ]
+        ],
+        "attack_type_distribution": {
+            "sql_injection": 45,
+            "xss": 32,
+            "brute_force": 28,
+            "csrf": 15,
+            "command_injection": 10,
+            "dos": 12,
+            "other": 14
+        }
     }
+    
+    # 缓存数据，设置过期时间为5分钟
+    cache_manager.set(cache_key, overview, expire=300)
     return overview
 
 @router.get("/top-targets")
 def get_top_targets():
+    # 尝试从缓存获取数据
+    cache_key = "dashboard:top-targets"
+    cached_data = cache_manager.get(cache_key)
+    if cached_data:
+        return cached_data
+    
     # Mock data for demonstration
     top_targets = [
         {"target": "/login", "count": 45, "attack_types": ["brute_force", "sql_injection"]},
@@ -52,10 +77,19 @@ def get_top_targets():
         {"target": "/api", "count": 25, "attack_types": ["command_injection", "sql_injection"]},
         {"target": "/profile", "count": 20, "attack_types": ["xss", "csrf"]}
     ]
+    
+    # 缓存数据，设置过期时间为5分钟
+    cache_manager.set(cache_key, top_targets, expire=300)
     return top_targets
 
 @router.get("/system-status")
 def get_system_status():
+    # 尝试从缓存获取数据
+    cache_key = "dashboard:system-status"
+    cached_data = cache_manager.get(cache_key)
+    if cached_data:
+        return cached_data
+    
     # Mock data for demonstration
     system_status = {
         "services": [
@@ -72,4 +106,7 @@ def get_system_status():
             "network_out": "800 KB/s"
         }
     }
+    
+    # 缓存数据，设置过期时间为1分钟（系统状态变化较快）
+    cache_manager.set(cache_key, system_status, expire=60)
     return system_status
