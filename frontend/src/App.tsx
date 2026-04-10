@@ -153,6 +153,7 @@ const App: React.FC = () => {
             {renderContent()}
           </Content>
         </Layout>
+      </Layout>
       </ConfigProvider>
   );
 };
