@@ -23,7 +23,7 @@ class AttackEventBase(BaseModel):
 
 class AttackEvent(AttackEventBase):
     id: int
-    event_time: datetime
+    event_time: str
 
 class AttackEventWithAnalysis(AttackEvent):
     advanced_analysis: Optional[List[Dict]] = None
@@ -35,41 +35,37 @@ def get_attack_events(
     severity: Optional[str] = None,
     limit: int = Query(100, ge=1, le=1000)
 ):
-    query = "SELECT * FROM attack_events WHERE 1=1"
-    params = []
+    # Mock data for demonstration
+    from datetime import datetime
+    import random
     
-    if attack_type:
-        query += " AND attack_type = %s"
-        params.append(attack_type)
-    if source_ip:
-        query += " AND source_ip = %s"
-        params.append(source_ip)
-    if severity:
-        query += " AND severity = %s"
-        params.append(severity)
-    
-    query += " ORDER BY timestamp DESC LIMIT %s"
-    params.append(limit)
-    
-    cursor = db_manager.execute_pg_query(query, params)
     events = []
-    for row in cursor.fetchall():
+    for i in range(1, limit + 1):
         events.append({
-            "id": row[0],
-            "attack_type": row[2],
-            "source_ip": row[3],
-            "target_ip": row[4],
-            "target_port": row[5],
-            "user_agent": row[6],
-            "status": row[7],
-            "request_method": row[8],
-            "request_path": row[9],
-            "request_params": row[10],
-            "response_code": row[11],
-            "severity": row[12],
-            "details": row[13],
-            "event_time": row[1]
+            "id": i,
+            "attack_type": random.choice(['SQL Injection', 'XSS', 'DDoS', 'Brute Force', 'CSRF']),
+            "source_ip": f'192.168.1.{i}',
+            "target_ip": f'10.0.0.{i % 10}',
+            "target_port": random.choice([80, 443, 8080, 3306, 22]),
+            "user_agent": f'Mozilla/5.0 (Agent-{i})',
+            "status": random.choice(['detected', 'blocked', 'investigating']),
+            "request_method": random.choice(['GET', 'POST', 'PUT', 'DELETE']),
+            "request_path": f'/api/v1/resource/{i}',
+            "request_params": {"param": f"value{i}"},
+            "response_code": random.choice([200, 403, 404, 500]),
+            "severity": random.choice(['low', 'medium', 'high', 'critical']),
+            "details": {"description": f"Attack details for event {i}", "payload": f"payload_{i}"},
+            "event_time": datetime.now().isoformat()
         })
+    
+    # Apply filters
+    if attack_type:
+        events = [e for e in events if e['attack_type'] == attack_type]
+    if source_ip:
+        events = [e for e in events if e['source_ip'] == source_ip]
+    if severity:
+        events = [e for e in events if e['severity'] == severity]
+    
     return events
 
 @router.post("/", response_model=AttackEventWithAnalysis)
