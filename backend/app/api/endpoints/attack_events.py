@@ -28,7 +28,7 @@ class AttackEvent(AttackEventBase):
 class AttackEventWithAnalysis(AttackEvent):
     advanced_analysis: Optional[List[Dict]] = None
 
-@router.get("/", response_model=List[AttackEvent])
+@router.get("", response_model=List[AttackEvent])
 def get_attack_events(
     attack_type: Optional[str] = None,
     source_ip: Optional[str] = None,
