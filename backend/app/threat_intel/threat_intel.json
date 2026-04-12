@@ -1,30 +1,30 @@
 {
   "malicious_ips": [
-    "172.16.0.50",
     "2.2.2.2",
-    "10.0.0.1",
-    "8.8.8.8",
-    "6.6.6.6",
     "1.1.1.1",
-    "192.168.1.100",
-    "4.4.4.4",
-    "9.9.9.9",
-    "10.10.10.10",
     "5.5.5.5",
     "7.7.7.7",
-    "3.3.3.3"
+    "8.8.8.8",
+    "10.10.10.10",
+    "6.6.6.6",
+    "172.16.0.50",
+    "192.168.1.100",
+    "3.3.3.3",
+    "10.0.0.1",
+    "4.4.4.4",
+    "9.9.9.9"
   ],
   "malicious_domains": [
-    "backdoor.com",
     "malware.in",
-    "hacker.net",
-    "malicious.com",
+    "botnet.com",
     "trojan.in",
     "evil.com",
-    "phishing.org",
-    "botnet.com",
+    "backdoor.com",
+    "attackers.net",
     "spam.org",
-    "attackers.net"
+    "phishing.org",
+    "hacker.net",
+    "malicious.com"
   ],
   "malicious_urls": [
     "http://botnet.com/c2",
@@ -61,5 +61,5 @@
       ]
     }
   },
-  "last_updated": "2026-04-12T08:57:17.082583"
+  "last_updated": "2026-04-12T08:59:01.827295"
 }
