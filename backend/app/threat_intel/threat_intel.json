@@ -1,35 +1,35 @@
 {
   "malicious_ips": [
+    "6.6.6.6",
+    "3.3.3.3",
+    "9.9.9.9",
+    "4.4.4.4",
+    "10.10.10.10",
+    "172.16.0.50",
+    "7.7.7.7",
+    "10.0.0.1",
     "2.2.2.2",
     "1.1.1.1",
     "5.5.5.5",
-    "7.7.7.7",
     "8.8.8.8",
-    "10.10.10.10",
-    "6.6.6.6",
-    "172.16.0.50",
-    "192.168.1.100",
-    "3.3.3.3",
-    "10.0.0.1",
-    "4.4.4.4",
-    "9.9.9.9"
+    "192.168.1.100"
   ],
   "malicious_domains": [
-    "malware.in",
-    "botnet.com",
-    "trojan.in",
-    "evil.com",
-    "backdoor.com",
     "attackers.net",
-    "spam.org",
+    "trojan.in",
     "phishing.org",
+    "spam.org",
+    "malicious.com",
+    "backdoor.com",
     "hacker.net",
-    "malicious.com"
+    "evil.com",
+    "malware.in",
+    "botnet.com"
   ],
   "malicious_urls": [
     "http://botnet.com/c2",
-    "https://phishing.org/login",
-    "http://malicious.com/exploit"
+    "http://malicious.com/exploit",
+    "https://phishing.org/login"
   ],
   "apt_groups": {
     "APT1": {
@@ -61,5 +61,5 @@
       ]
     }
   },
-  "last_updated": "2026-04-12T09:59:01.828142"
+  "last_updated": "2026-04-12T10:12:00.320232"
 }
